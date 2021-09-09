@@ -6,6 +6,41 @@ from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models.aggregates import Count
 from django_extensions.db.models import TimeStampedModel
+from rgd.models import ChecksumFile, Collection
+
+__all__ = ['DockerImage', 'WorkflowStepDependency', 'WorkflowStep', 'Workflow']
+
+
+def create_default_workflow_collection():
+    return Collection.objects.create(name='Collection Workflow')
+
+
+class DockerImage(TimeStampedModel):
+    # Optional name
+    name = models.CharField(null=True, max_length=255)
+
+    # The image id to pull down
+    image_id = models.CharField(null=True, max_length=255)
+
+    # If the docker image was provided as a file
+    image_file = models.ForeignKey(
+        ChecksumFile, related_name='docker_images', null=True, on_delete=models.CASCADE
+    )
+
+    # TODO: Add field for registry, for other images
+    # registry = models.URLField(null=True)
+
+    class Meta:
+        constraints = [
+            # Ensure that only one of these fields can be set at a time
+            models.CheckConstraint(
+                check=(
+                    models.Q(image_id__isnull=False, image_file__isnull=True)
+                    | models.Q(image_id__isnull=True, image_file__isnull=False)
+                ),
+                name='single_image_source',
+            )
+        ]
 
 
 class WorkflowStepDependency(TimeStampedModel):
@@ -45,8 +80,16 @@ class WorkflowStep(TimeStampedModel):
     """An algorithm to run in a workflow."""
 
     name = models.CharField(max_length=255)
-    # docker_image = models.ForeignKey(??)
-    invocation = ArrayField(models.CharField(max_length=255))
+
+    # The docker image to use
+    docker_image = models.ForeignKey(
+        DockerImage, related_name='workflow_steps', on_delete=models.CASCADE
+    )
+
+    # The command to run the image with, as an array of strings
+    command = ArrayField(models.CharField(max_length=255))
+
+    # The workflow this step is attached to
     workflow = models.ForeignKey(
         'Workflow', related_name='workflow_steps', on_delete=models.CASCADE
     )
@@ -95,14 +138,13 @@ class WorkflowStep(TimeStampedModel):
         return step
 
 
-# TODO: Add signals for workflow step post_save, to add self referencing paths
-# Assume that any workflow steps that are created on their own, are root steps
-
-
 class Workflow(TimeStampedModel):
     """A model for organizing the running of workflow steps."""
 
     name = models.CharField(max_length=255, unique=True)
+    collection = models.OneToOneField(
+        Collection, on_delete=models.PROTECT, default=create_default_workflow_collection
+    )
 
     def steps(self) -> List[WorkflowStep]:
         """
