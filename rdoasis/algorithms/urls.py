@@ -1,33 +1,13 @@
-import inspect
-
 from django.contrib import admin
 from django.urls import include, path
-from django_filters.rest_framework import DjangoFilterBackend
 from djproxy.urls import generate_routes
-from rest_framework import viewsets
-from rest_framework.routers import SimpleRouter
-from rgd import utility
+from rest_framework_extensions.routers import ExtendedSimpleRouter
 
-from . import serializers, views
+from . import views
+from .views.workflow import WorkflowViewSet
 
-router = SimpleRouter()
-for _, ser in inspect.getmembers(serializers):
-    if inspect.isclass(ser):
-        model = ser.Meta.model
-        model_name = model.__name__
-        viewset_class = type(
-            model_name + 'ViewSet',
-            (viewsets.ModelViewSet,),
-            {
-                'parser_classes': (utility.MultiPartJsonParser,),
-                'queryset': model.objects.all(),
-                'serializer_class': ser,
-                'filter_backends': [DjangoFilterBackend],
-                'filterset_fields': utility.get_filter_fields(model),
-            },
-        )
-        viewset_class.__doc__ = model.__doc__
-        router.register('api/%s' % (model_name.lower()), viewset_class)
+router = ExtendedSimpleRouter()
+workflow_routes = router.register('workflow', WorkflowViewSet)
 
 admin.site.index_template = 'admin/add_links.html'
 urlpatterns = [

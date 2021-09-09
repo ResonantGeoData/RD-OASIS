@@ -48,6 +48,7 @@ setup(
         'django-oauth-toolkit',
         'djangorestframework',
         'djproxy',
+        'drf-extensions',
         'drf-yasg',
         'flower',
         'gputil',
