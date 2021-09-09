@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from typing import List
+from typing import List, Type
 
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models.aggregates import Count
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django_extensions.db.models import TimeStampedModel
 from rgd.models import ChecksumFile, Collection
 
@@ -176,3 +178,9 @@ class Workflow(TimeStampedModel):
 
         # Return added_step
         return workflow_step
+
+
+@receiver(post_delete, sender=Workflow)
+def workflow_collection_delete(sender: Type[Workflow], instance: Workflow, **kwargs):
+    collection: Collection = instance.collection
+    collection.delete()
