@@ -1,21 +1,26 @@
-from django.contrib.auth.models import User
 import factory.django
-from rgd.core import models
+
+from rdoasis.algorithms import models
 
 
-class UserFactory(factory.django.DjangoModelFactory):
+class WorkflowFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = User
-
-    username = factory.SelfAttribute('email')
-    email = factory.Faker('safe_email')
-    first_name = factory.Faker('first_name')
-    last_name = factory.Faker('last_name')
+        model = models.Workflow
 
 
-class TaskFactory(factory.django.DjangoModelFactory):
+class DockerImageFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = models.Task
+        model = models.DockerImage
 
-    name = factory.Faker('sentence', nb_words=2)
-    creator = factory.SubFactory(UserFactory)
+    image_id = 'hello-world'
+    image_file = None
+
+
+class WorkflowStepFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = models.WorkflowStep
+
+    command = factory.LazyAttribute(lambda _: list())
+    docker_image = factory.SubFactory(DockerImageFactory)
+    workflow = factory.SubFactory(WorkflowFactory)
+    name = factory.Faker('pystr')
