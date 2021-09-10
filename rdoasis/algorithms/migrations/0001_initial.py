@@ -76,7 +76,7 @@ class Migration(migrations.Migration):
                 (
                     'collection',
                     models.OneToOneField(
-                        default=rdoasis.algorithms.models.workflow.create_default_workflow_collection,
+                        default=rdoasis.algorithms.models.workflow.create_default_workflow_collection,  # noqa
                         on_delete=django.db.models.deletion.PROTECT,
                         to='rgd.collection',
                     ),
