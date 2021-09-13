@@ -32,6 +32,30 @@ def workflow_with_steps(workflow, workflow_step_factory):
     return workflow
 
 
+@pytest.fixture
+def workflow_graph_steps(workflow_with_steps, workflow_step_factory):
+    """
+    Create a graph with the following structure
+
+                      1
+                     / \
+                    2   4
+                   / \ / \   # noqa
+                  3   5   6
+    """
+    step_1, step_2, step_3 = workflow_with_steps.steps()
+    step_4: WorkflowStep = workflow_step_factory(workflow=workflow_with_steps)
+    step_5: WorkflowStep = workflow_step_factory(workflow=workflow_with_steps)
+    step_6: WorkflowStep = workflow_step_factory(workflow=workflow_with_steps)
+
+    step_1.append_step(step_4)
+    step_2.append_step(step_5)
+    step_4.append_step(step_5)
+    step_4.append_step(step_6)
+
+    return workflow_with_steps
+
+
 register(DockerImageFactory)
 register(WorkflowFactory)
 register(WorkflowStepFactory)

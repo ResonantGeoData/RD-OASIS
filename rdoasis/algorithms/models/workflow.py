@@ -4,7 +4,6 @@ from typing import List, Type
 
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
-from django.db.models.aggregates import Count
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django_extensions.db.models import TimeStampedModel
@@ -49,11 +48,11 @@ class WorkflowStepDependency(TimeStampedModel):
     """
     A dependency relation between two workflow steps.
 
-    This uses a closure table design, and supports trees of connected workflow steps.
+    This uses a closure table design, and supports graphs of connected workflow steps.
     In this model, parent points to any step that must run before the corresponding child step.
     In any given workflow, a WorkflowStep will have multiple corresponding WorkflowStepDependency
-    entries pointing to it, to indicate the steps which run before and after it (e.g. where on
-    the tree it resides). There is an entry in this table for any dependency, not just immediate.
+    entries pointing to it, to indicate the steps which run before and after it (e.g. where in
+    the graph it resides). There is an entry in this table for any dependency, not just immediate.
     For example, if there is a workflow of the following format:
 
         A -> B -> C
@@ -65,12 +64,16 @@ class WorkflowStepDependency(TimeStampedModel):
     inconsistencies. Rather, the provided methods in Workflow and WorkflowStep should be used.
     """
 
-    parent = models.ForeignKey(
-        'WorkflowStep', related_name='workflow_step_parents', on_delete=models.CASCADE
-    )
-    child = models.ForeignKey(
-        'WorkflowStep', related_name='workflow_step_children', on_delete=models.CASCADE
-    )
+    # Give related name of child_links, because for any entry with parent=node,
+    # all links from node.child_links have the form (parent=node, child=child_node)
+    parent = models.ForeignKey('WorkflowStep', related_name='child_links', on_delete=models.CASCADE)
+
+    # Give related name of parent_links, because for any entry with child=node,
+    # all links from node.parent_links have the form (parent=parent_node, child=node)
+    child = models.ForeignKey('WorkflowStep', related_name='parent_links', on_delete=models.CASCADE)
+
+    # The distance between the parent and child (direct child = 1, grandchild = 2, etc.)
+    distance = models.PositiveIntegerField()
 
     class Meta:
         constraints = [
@@ -101,23 +104,32 @@ class WorkflowStep(TimeStampedModel):
             models.UniqueConstraint(fields=['workflow', 'name'], name='unique_workflow_step')
         ]
 
+    def _parent_links(self):
+        """Return the queryset of links between this step and its parents."""
+        return (
+            WorkflowStepDependency.objects.filter(child=self)
+            .exclude(parent=self)
+            .order_by('distance', 'modified')
+            .select_related('parent')
+        )
+
     def parents(self) -> List[WorkflowStep]:
         """Return all parents of this step (all steps that run prior to this step)."""
-        return [
-            relation.parent
-            for relation in WorkflowStepDependency.objects.filter(child=self)
-            .exclude(parent=self)
-            .select_related('parent')
-        ]
+        return [link.parent for link in self._parent_links()]
+
+    def _child_links(self):
+        """Return the queryset of links between this step and its children."""
+
+        return (
+            WorkflowStepDependency.objects.filter(parent=self)
+            .exclude(child=self)
+            .order_by('distance', 'modified')
+            .select_related('child')
+        )
 
     def children(self) -> List[WorkflowStep]:
         """Return all children of this step (all steps that run after this step)."""
-        return [
-            relation.child
-            for relation in WorkflowStepDependency.objects.filter(parent=self)
-            .exclude(child=self)
-            .select_related('parent')
-        ]
+        return [link.child for link in self._child_links()]
 
     def append_step(self, step: WorkflowStep):
         """Add a step to the workflow, running after this step."""
@@ -125,16 +137,19 @@ class WorkflowStep(TimeStampedModel):
         step.save()
 
         # Create dependencies between this step's parents and the new step
-        dependencies = [WorkflowStepDependency(parent=a, child=step) for a in self.parents()]
+        dependencies = [
+            WorkflowStepDependency(parent=p.parent, child=step, distance=p.distance + 1)
+            for p in self._parent_links()
+        ]
 
         # Create a dependency between this step and the new step
-        dependencies.append(WorkflowStepDependency(parent=self, child=step))
+        dependencies.append(WorkflowStepDependency(parent=self, child=step, distance=1))
 
         # Add self reference dependency
-        dependencies.append(WorkflowStepDependency(parent=step, child=step))
+        dependencies.append(WorkflowStepDependency(parent=step, child=step, distance=0))
 
-        # Save dependencies
-        WorkflowStepDependency.objects.bulk_create(dependencies)
+        # Save dependencies, ignoring any possible duplicates
+        WorkflowStepDependency.objects.bulk_create(dependencies, ignore_conflicts=True)
 
         # Return added step
         return step
@@ -155,13 +170,12 @@ class Workflow(TimeStampedModel):
         This function returns the steps in Bread First Search (BFS) ordering.
         """
         # Get all steps, ordering from most to least parent dependencies (first run to last run)
-        all_steps = (
+        return list(
             WorkflowStep.objects.filter(workflow=self)
-            .annotate(count=Count('workflow_step_parents'))
-            .order_by('-count')
+            .annotate(num_children=models.Count('child_links'))
+            .select_related('workflow')
+            .order_by('-num_children')
         )
-
-        return list(all_steps)
 
     def add_root_step(self, workflow_step: WorkflowStep) -> WorkflowStep:
         """
@@ -174,7 +188,7 @@ class Workflow(TimeStampedModel):
         workflow_step.save()
 
         # Add self referencing step
-        WorkflowStepDependency.objects.create(parent=workflow_step, child=workflow_step)
+        WorkflowStepDependency.objects.create(parent=workflow_step, child=workflow_step, distance=0)
 
         # Return added_step
         return workflow_step
