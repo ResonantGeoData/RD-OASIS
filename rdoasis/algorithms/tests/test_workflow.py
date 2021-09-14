@@ -1,5 +1,6 @@
 from typing import List
 
+from django.db import models
 import pytest
 
 from rdoasis.algorithms.models import Workflow, WorkflowStep
@@ -57,6 +58,30 @@ def test_workflow_step_distance(workflow_with_steps: Workflow):
     # Make implicit assertions by attempting to retrieve each link
     for parent, child, distance in step_distances:
         WorkflowStepDependency.objects.get(parent=parent, child=child, distance=distance)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("step_index", [0, 1, 2])
+def test_workflow_step_delete(workflow_with_steps: Workflow, step_index: int):
+    """Test that step deletion functions correctly."""
+    steps = workflow_with_steps.steps()
+
+    # Delete the appropriate step
+    deleted_step = steps.pop(step_index)
+    deleted_step.delete()
+
+    # Assert child/parent relationship
+    step_a, step_b = steps
+    assert step_a.children() == [step_b]
+    assert step_b.parents() == [step_a]
+
+    # Assert distances have been updated correctly
+    assert WorkflowStepDependency.objects.get(parent=step_a, child=step_b).distance == 1
+
+    # Assert that no more links referencing step 3 exist
+    assert not WorkflowStepDependency.objects.filter(
+        models.Q(parent=deleted_step) | models.Q(child=deleted_step)
+    ).exists()
 
 
 @pytest.mark.django_db

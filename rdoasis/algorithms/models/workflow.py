@@ -4,7 +4,7 @@ from typing import List, Optional, Type
 
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
-from django.db.models.signals import post_delete
+from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
 from django_extensions.db.models import TimeStampedModel
 from rgd.models import ChecksumFile, Collection
@@ -149,7 +149,7 @@ class WorkflowStep(TimeStampedModel):
         # Create dependencies between this step's parents and the new step
         dependencies = [
             WorkflowStepDependency(parent=p.parent, child=step, distance=p.distance + 1)
-            for p in self._parent_links()
+            for p in self._parent_links(None)
         ]
 
         # Create a dependency between this step and the new step
@@ -165,6 +165,20 @@ class WorkflowStep(TimeStampedModel):
         return step
 
 
+@receiver(pre_delete, sender=WorkflowStep)
+def workflow_step_distance_adjust(sender: Type[WorkflowStep], instance: WorkflowStep, **kwargs):
+    """Update the distance of all links to this step's children."""
+
+    # Only include links that point to children of this step
+    links = WorkflowStepDependency.objects.filter(child__in=instance.children())
+
+    # Only include indirect links
+    links = links.filter(distance__gte=2)
+
+    # Subtract 1 from all relevant links
+    links.update(distance=models.F('distance') - 1)
+
+
 class Workflow(TimeStampedModel):
     """A model for organizing the running of workflow steps."""
 
@@ -173,6 +187,7 @@ class Workflow(TimeStampedModel):
         Collection, on_delete=models.PROTECT, default=create_default_workflow_collection
     )
 
+    # TODO: Add depth here as well, may require refactor to use dependency
     def steps(self) -> List[WorkflowStep]:
         """
         Return all workflow steps, ordered from first to last.
