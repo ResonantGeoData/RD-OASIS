@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Type
+from typing import List, Optional, Type
 
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
@@ -104,32 +104,42 @@ class WorkflowStep(TimeStampedModel):
             models.UniqueConstraint(fields=['workflow', 'name'], name='unique_workflow_step')
         ]
 
-    def _parent_links(self):
+    def _parent_links(self, depth: Optional[int]):
         """Return the queryset of links between this step and its parents."""
-        return (
+        query = (
             WorkflowStepDependency.objects.filter(child=self)
             .exclude(parent=self)
             .order_by('distance', 'modified')
             .select_related('parent')
         )
 
-    def parents(self) -> List[WorkflowStep]:
-        """Return all parents of this step (all steps that run prior to this step)."""
-        return [link.parent for link in self._parent_links()]
+        if depth is not None:
+            query = query.filter(distance__lte=depth)
 
-    def _child_links(self):
+        return query
+
+    def parents(self, depth: Optional[int] = None) -> List[WorkflowStep]:
+        """Return all parents of this step (all steps that run prior to this step)."""
+        return [link.parent for link in self._parent_links(depth)]
+
+    def _child_links(self, depth: Optional[int]):
         """Return the queryset of links between this step and its children."""
 
-        return (
+        query = (
             WorkflowStepDependency.objects.filter(parent=self)
             .exclude(child=self)
             .order_by('distance', 'modified')
             .select_related('child')
         )
 
-    def children(self) -> List[WorkflowStep]:
+        if depth is not None:
+            query = query.filter(distance__lte=depth)
+
+        return query
+
+    def children(self, depth: Optional[int] = None) -> List[WorkflowStep]:
         """Return all children of this step (all steps that run after this step)."""
-        return [link.child for link in self._child_links()]
+        return [link.child for link in self._child_links(depth)]
 
     def append_step(self, step: WorkflowStep):
         """Add a step to the workflow, running after this step."""

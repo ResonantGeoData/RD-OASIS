@@ -1,4 +1,3 @@
-from operator import attrgetter
 from typing import List
 
 import pytest
@@ -74,6 +73,25 @@ def test_workflow_step_children(workflow_with_steps: Workflow):
 
 
 @pytest.mark.django_db
+def test_workflow_step_children_depth(workflow_with_steps: Workflow):
+    step_1, step_2, step_3 = workflow_with_steps.steps()
+    step_children_pairs = [
+        (step_1, None, [step_2, step_3]),
+        (step_1, 2, [step_2, step_3]),
+        (step_1, 1, [step_2]),
+        (step_1, 0, []),
+        (step_2, None, [step_3]),
+        (step_2, 1, [step_3]),
+        (step_2, 0, []),
+        (step_3, None, []),
+        (step_3, 0, []),
+    ]
+
+    for step, depth, children in step_children_pairs:
+        assert step.children(depth) == children
+
+
+@pytest.mark.django_db
 def test_workflow_step_parents(workflow_with_steps: Workflow):
     step_1, step_2, step_3 = workflow_with_steps.steps()
     step_parents_pairs = [
@@ -84,6 +102,25 @@ def test_workflow_step_parents(workflow_with_steps: Workflow):
 
     for step, children in step_parents_pairs:
         assert step.parents() == children
+
+
+@pytest.mark.django_db
+def test_workflow_step_parents_depth(workflow_with_steps: Workflow):
+    step_1, step_2, step_3 = workflow_with_steps.steps()
+    step_parents_pairs = [
+        (step_1, None, []),
+        (step_1, 0, []),
+        (step_2, None, [step_1]),
+        (step_2, 1, [step_1]),
+        (step_2, 0, []),
+        (step_3, None, [step_2, step_1]),
+        (step_3, 2, [step_2, step_1]),
+        (step_3, 1, [step_2]),
+        (step_3, 0, []),
+    ]
+
+    for step, depth, children in step_parents_pairs:
+        assert step.parents(depth) == children
 
 
 @pytest.mark.django_db
