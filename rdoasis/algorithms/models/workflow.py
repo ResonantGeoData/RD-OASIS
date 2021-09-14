@@ -188,19 +188,23 @@ class Workflow(TimeStampedModel):
     )
 
     # TODO: Add depth here as well, may require refactor to use dependency
-    def steps(self) -> List[WorkflowStep]:
+    def _steps_queryset(self):
         """
         Return all workflow steps, ordered from first to last.
 
         This function returns the steps in Bread First Search (BFS) ordering.
         """
         # Get all steps, ordering from most to least parent dependencies (first run to last run)
-        return list(
+        return (
             WorkflowStep.objects.filter(workflow=self)
             .annotate(num_children=models.Count('child_links'))
             .select_related('workflow')
             .order_by('-num_children')
         )
+
+    def steps(self) -> List[WorkflowStep]:
+        """Get all steps, ordering from most to least parent dependencies (first to last run)."""
+        return list(self._steps_queryset())
 
     def add_root_step(self, workflow_step: WorkflowStep) -> WorkflowStep:
         """
