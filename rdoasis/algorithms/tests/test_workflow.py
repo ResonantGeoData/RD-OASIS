@@ -187,6 +187,25 @@ def test_workflow_step_graph_ordering(workflow_with_steps: Workflow, workflow_st
 
 
 @pytest.mark.django_db
+def test_workflow_steps_depth(workflow_graph_steps: Workflow, workflow_step_factory):
+    step_1, step_2, step_4, step_3, step_5, step_6 = workflow_graph_steps.steps()
+    assert workflow_graph_steps.steps(depth=0) == [step_1]
+    assert workflow_graph_steps.steps(depth=1) == [step_1, step_2, step_4]
+    assert workflow_graph_steps.steps(depth=2) == [step_1, step_2, step_4, step_3, step_5, step_6]
+
+
+@pytest.mark.django_db
+def test_workflow_root_steps(workflow_graph_steps: Workflow, workflow_step_factory):
+    step_1, step_2, step_4, step_3, step_5, step_6 = workflow_graph_steps.steps()
+    assert workflow_graph_steps.root_steps() == [step_1]
+
+    # Add another root step
+    step_7 = workflow_step_factory(workflow=workflow_graph_steps)
+    workflow_graph_steps.add_root_step(step_7)
+    assert workflow_graph_steps.root_steps() == [step_1, step_7]
+
+
+@pytest.mark.django_db
 def test_workflow_graph_children(workflow_graph_steps: Workflow):
     step_1, step_2, step_4, step_3, step_5, step_6 = workflow_graph_steps.steps()
     step_1_children = step_1.children()

@@ -187,24 +187,34 @@ class Workflow(TimeStampedModel):
         Collection, on_delete=models.PROTECT, default=create_default_workflow_collection
     )
 
-    # TODO: Add depth here as well, may require refactor to use dependency
-    def _steps_queryset(self):
+    def _steps_queryset(self, depth: Optional[int]):
         """
         Return all workflow steps, ordered from first to last.
 
         This function returns the steps in Bread First Search (BFS) ordering.
         """
-        # Get all steps, ordering from most to least parent dependencies (first run to last run)
-        return (
+        # Get all steps, ordered by the longest parent distance it has
+        query = (
             WorkflowStep.objects.filter(workflow=self)
-            .annotate(num_children=models.Count('child_links'))
+            .annotate(max_parent_depth=models.Max('parent_links__distance'))
             .select_related('workflow')
-            .order_by('-num_children')
+            .order_by('max_parent_depth', 'modified')
         )
 
-    def steps(self) -> List[WorkflowStep]:
+        if depth is not None:
+            query = query.filter(max_parent_depth__lte=depth)
+
+        return query
+
+    def steps(self, depth: Optional[int] = None) -> List[WorkflowStep]:
         """Get all steps, ordering from most to least parent dependencies (first to last run)."""
-        return list(self._steps_queryset())
+        return list(self._steps_queryset(depth))
+
+    def root_steps(self) -> List[WorkflowStep]:
+        """Get the root steps of a workflow."""
+
+        # Only return steps with zero parents (root steps)
+        return list(self._steps_queryset(depth=0))
 
     def add_root_step(self, workflow_step: WorkflowStep) -> WorkflowStep:
         """
