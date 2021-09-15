@@ -4,10 +4,16 @@ from djproxy.urls import generate_routes
 from rest_framework_extensions.routers import ExtendedSimpleRouter
 
 from . import views
-from .views.workflow import WorkflowViewSet
+from .views.workflow import WorkflowStepViewSet, WorkflowViewSet
 
 router = ExtendedSimpleRouter()
 workflow_routes = router.register('workflow', WorkflowViewSet)
+workflow_routes.register(
+    'steps',
+    WorkflowStepViewSet,
+    basename='step',
+    parents_query_lookups=[f'workflow__{WorkflowViewSet.lookup_field}'],
+)
 
 admin.site.index_template = 'admin/add_links.html'
 urlpatterns = [
