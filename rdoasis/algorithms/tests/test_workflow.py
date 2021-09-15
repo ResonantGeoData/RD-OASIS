@@ -1,5 +1,6 @@
 from typing import List
 
+from django.core.exceptions import ValidationError
 from django.db import models
 import pytest
 
@@ -192,6 +193,13 @@ def test_workflow_steps_depth(workflow_graph_steps: Workflow, workflow_step_fact
     assert workflow_graph_steps.steps(depth=0) == [step_1]
     assert workflow_graph_steps.steps(depth=1) == [step_1, step_2, step_4]
     assert workflow_graph_steps.steps(depth=2) == [step_1, step_2, step_4, step_3, step_5, step_6]
+
+
+@pytest.mark.django_db
+def test_workflow_no_circular_steps(workflow_graph_steps: Workflow):
+    step_1, _, _, _, _, step_6 = workflow_graph_steps.steps()
+    with pytest.raises(ValidationError):
+        step_6.append_step(step_1)
 
 
 @pytest.mark.django_db

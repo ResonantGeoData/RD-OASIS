@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import List, Optional, Type
 
 from django.contrib.postgres.fields import ArrayField
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
@@ -145,6 +146,12 @@ class WorkflowStep(TimeStampedModel):
         """Add a step to the workflow, running after this step."""
         # Ensure that step is saved
         step.save()
+
+        # Ensure no circular dependency is created
+        if self in step.children():
+            raise ValidationError(
+                'Cannot append parent step as a child of this step (circular dependency).'
+            )
 
         # Create dependencies between this step's parents and the new step
         dependencies = [
