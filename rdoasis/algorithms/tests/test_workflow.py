@@ -43,7 +43,6 @@ def test_workflow_step_append(workflow_step_factory, workflow):
 @pytest.mark.django_db
 def test_workflow_step_distance(workflow_with_steps: Workflow):
     """Test that WorkflowDependency.distance is used correctly."""
-
     step_1, step_2, step_3 = workflow_with_steps.steps()
 
     # The distances between each step
@@ -62,7 +61,7 @@ def test_workflow_step_distance(workflow_with_steps: Workflow):
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("step_index", [0, 1, 2])
+@pytest.mark.parametrize('step_index', [0, 1, 2])
 def test_workflow_step_delete(workflow_with_steps: Workflow, step_index: int):
     """Test that step deletion functions correctly."""
     steps = workflow_with_steps.steps()

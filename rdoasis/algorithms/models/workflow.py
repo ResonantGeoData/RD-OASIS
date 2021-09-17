@@ -125,7 +125,6 @@ class WorkflowStep(TimeStampedModel):
 
     def _child_links(self, depth: Optional[int]):
         """Return the queryset of links between this step and its children."""
-
         query = (
             WorkflowStepDependency.objects.filter(parent=self)
             .exclude(child=self)
@@ -175,7 +174,6 @@ class WorkflowStep(TimeStampedModel):
 @receiver(pre_delete, sender=WorkflowStep)
 def workflow_step_distance_adjust(sender: Type[WorkflowStep], instance: WorkflowStep, **kwargs):
     """Update the distance of all links to this step's children."""
-
     # Only include links that point to children of this step
     links = WorkflowStepDependency.objects.filter(child__in=instance.children())
 
@@ -219,7 +217,6 @@ class Workflow(TimeStampedModel):
 
     def root_steps(self) -> List[WorkflowStep]:
         """Get the root steps of a workflow."""
-
         # Only return steps with zero parents (root steps)
         return list(self._steps_queryset(depth=0))
 

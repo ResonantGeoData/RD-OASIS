@@ -150,6 +150,6 @@ class WorkflowStepViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
         try:
             parent_workflow_step.append_step(child_workflow_step)
         except ValidationError as e:
-            return Response(e.message, status=HTTP_400_BAD_REQUEST)
+            return Response(str(e), status=HTTP_400_BAD_REQUEST)
 
         return Response(WorkflowStepSerializer(child_workflow_step).data)
