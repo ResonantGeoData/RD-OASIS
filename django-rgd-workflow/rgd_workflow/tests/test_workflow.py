@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 import pytest
 from rgd_workflow.models import Workflow, WorkflowStep
-from rgd_workflow.models.workflow import WorkflowStepDependency
+from rgd_workflow.models.workflow import WorkflowStepDependency, WorkflowStepRun
 
 
 @pytest.mark.django_db
@@ -244,3 +244,59 @@ def test_workflow_graph_parents(workflow_graph_steps: Workflow):
 
     # Assert root step parents
     assert step_1.parents() == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("status", WorkflowStepRun.Status.values)
+def test_workflow_step_completed(workflow_graph_steps: Workflow, status: WorkflowStepRun.Status):
+    step_1 = workflow_graph_steps.steps()[0]
+
+    # Assert step not completed yet
+    assert not step_1.completed
+
+    # Create run for step 1
+    run: WorkflowStepRun = WorkflowStepRun.objects.create(
+        workflow_step=step_1, status=WorkflowStepRun.Status.CREATED
+    )
+
+    # Assert step not completed yet
+    assert not step_1.completed
+
+    # Mock step success, assert step completed
+    run.status = status
+    run.save()
+    should_be_completed = status == WorkflowStepRun.Status.SUCCEEDED
+    assert step_1.completed == should_be_completed
+
+    # Mock new failed run, assert not completed
+    WorkflowStepRun.objects.create(workflow_step=step_1, status=WorkflowStepRun.Status.FAILED)
+    assert not step_1.completed
+
+
+@pytest.mark.django_db
+def test_workflow_completed(workflow_graph_steps: Workflow):
+    # Assert workflow not completed yet
+    assert not workflow_graph_steps.completed
+
+    steps = workflow_graph_steps.steps()
+    runs: List[WorkflowStepRun] = WorkflowStepRun.objects.bulk_create(
+        [
+            WorkflowStepRun(workflow_step=step, status=WorkflowStepRun.Status.CREATED)
+            for step in steps
+        ]
+    )
+
+    # Assert workflow not completed yet
+    assert not workflow_graph_steps.completed
+
+    # Mark all runs as suceeded
+    for run in runs:
+        run.status = WorkflowStepRun.Status.SUCCEEDED
+        run.save()
+
+    # Assert workflow completed
+    assert workflow_graph_steps.completed
+
+    # Assert workflow no longer completed if new run fails
+    WorkflowStepRun.objects.create(workflow_step=steps[0], status=WorkflowStepRun.Status.FAILED)
+    assert not workflow_graph_steps.completed

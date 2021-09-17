@@ -187,17 +187,16 @@ class WorkflowStep(TimeStampedModel):
         return step
 
     @property
-    def completed(self) -> bool:
-        """Return true if this step has been successfully completed."""
-
-        return WorkflowStepRun.objects.filter(
-            workflow_step=self, status=WorkflowStepRun.Status.SUCCEEDED
-        ).exists()
-
-    @property
     def last_run(self) -> Optional[WorkflowStepRun]:
         """Return the last run of this workflow step, which may be currently running."""
         return WorkflowStepRun.objects.filter(workflow_step=self).order_by('-modified').first()
+
+    @property
+    def completed(self) -> bool:
+        """Return true if this step has been successfully completed."""
+        return (
+            self.last_run is not None and self.last_run.status == WorkflowStepRun.Status.SUCCEEDED
+        )
 
 
 @receiver(pre_delete, sender=WorkflowStep)
