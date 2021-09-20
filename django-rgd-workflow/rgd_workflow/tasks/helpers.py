@@ -7,9 +7,17 @@
 # import time
 
 # import GPUtil
+from rdoasis.algorithms.models.workflow import Workflow
+from django.conf import settings
+from typing import Optional, Tuple
 from celery.utils.log import get_task_logger
 
 from rdoasis.algorithms.models import WorkflowStep, WorkflowStepRun
+from rdoasis.settings import (
+    DevelopmentConfiguration,
+    ProductionConfiguration,
+    HerokuProductionConfiguration,
+)
 
 # from django.db.models.fields.files import FieldFile
 # import docker
@@ -33,6 +41,41 @@ def workflow_step_ready_to_run(step: WorkflowStep):
             return False
 
     return True
+
+
+# TODO: Move to settings
+def s3_or_minio_credentials() -> Tuple[str, str]:
+    """
+    Return the access credentials for S3 or MinIO, depending on the environment.
+
+    Returns a tuple of either
+        (access_key, secret_key) for MinIO, or
+        (access_key_id, secret_access_key) for S3.
+    """
+    if settings.CONFIGURATION in [ProductionConfiguration, HerokuProductionConfiguration]:
+        return settings.AWS_S3_ACCESS_KEY_ID, settings.AWS_S3_SECRET_ACCESS_KEY
+
+    return settings.MINIO_STORAGE_ACCESS_KEY, settings.MINIO_STORAGE_SECRET_KEY
+
+
+# TODO: Move to settings
+def s3_or_minio_bucket_name() -> str:
+    """Return the bucket name used by S3 or Minio, depending on the environment."""
+    if settings.CONFIGURATION in [ProductionConfiguration, HerokuProductionConfiguration]:
+        return settings.AWS_STORAGE_BUCKET_NAME
+
+    return settings.MINIO_STORAGE_MEDIA_BUCKET_NAME
+
+
+def minio_storage_url() -> Optional[str]:
+    if settings.CONFIGURATION == 'rdoasis.settings.DevelopmentConfiguration':
+        # return 'http://localhost:9000'
+        return f'http://{settings.MINIO_STORAGE_ENDPOINT}'
+
+
+def get_workflow_collection_mount_point(workflow: Workflow) -> str:
+    """Return the path that should be used to mount a workflow's collection."""
+    return f'/mnt/workflow_collection_{workflow.pk}'
 
 
 # def _run_algorithm(algorithm_job):

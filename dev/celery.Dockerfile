@@ -9,6 +9,7 @@ RUN apt-get update && \
         libc6-dev \
         libmagic1 \
         fuse \
+        s3fs \
         docker.io \
         && \
     rm -rf /var/lib/apt/lists/*

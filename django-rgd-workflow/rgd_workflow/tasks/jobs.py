@@ -1,5 +1,6 @@
 from typing import List
 
+import os
 from celery import shared_task
 
 from rdoasis.algorithms.models.workflow import WorkflowStep, WorkflowStepRun
@@ -32,7 +33,9 @@ def run_workflow_step(workflow_step_run_id, **kwargs):
 
     # TODO: Replace with implementation
     print(f'--------- RUN STEP {run.workflow_step.name} ---------')
-    run.delete()
+
+    files = os.walk(data_path)
+    print(files)
 
 
 @shared_task(time_limit=86400)
