@@ -41,6 +41,115 @@ def test_workflow_step_append(workflow_step_factory, workflow):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    'parent_indexes, children_indexes',
+    [
+        ([0], [5]),
+        ([2], [5]),
+        ([3, 4, 5], []),
+        ([2, 3], []),
+    ],
+)
+def test_workflow_insert_step_graph(
+    workflow_graph_steps: Workflow, workflow_step_factory, parent_indexes, children_indexes
+):
+    steps = workflow_graph_steps.steps()
+    parents = [steps[i] for i in parent_indexes]
+    children = [steps[i] for i in children_indexes]
+
+    # Collect links that will have an updated distance after insertion
+    affected_links: List[WorkflowStepDependency] = list(
+        WorkflowStepDependency.objects.filter(parent__in=parents, child__in=children)
+    )
+
+    new_step: WorkflowStep = workflow_step_factory(workflow=workflow_graph_steps)
+    workflow_graph_steps.insert_step(new_step, parents=parents, children=children)
+
+    for parent in parents:
+        assert new_step in parent.children()
+        assert parent in new_step.parents()
+
+    for child in children:
+        assert new_step in child.parents()
+        assert child in new_step.children()
+
+    for link in affected_links:
+        assert WorkflowStepDependency.objects.get(pk=link.pk).distance == link.distance + 1
+
+
+@pytest.mark.django_db
+def test_workflow_insert_step_linear(workflow_with_steps: Workflow, workflow_step_factory):
+    steps = workflow_with_steps.steps()
+    step_1, step_2, step_3 = steps
+
+    # Observe links before insertion
+    step_1_step_2_link = WorkflowStepDependency.objects.get(parent=step_1, child=step_2)
+    step_1_step_3_link = WorkflowStepDependency.objects.get(parent=step_1, child=step_3)
+    step_2_step_3_link = WorkflowStepDependency.objects.get(parent=step_2, child=step_3)
+
+    assert step_1_step_2_link.distance == 1
+    assert step_1_step_3_link.distance == 2
+    assert step_2_step_3_link.distance == 1
+
+    # Insert step between step 1 and step 2
+    step_4 = workflow_step_factory(workflow=workflow_with_steps)
+    workflow_with_steps.insert_step(step_4, parents=[step_1], children=[step_2])
+
+    # Assert order
+    assert workflow_with_steps.steps() == [step_1, step_4, step_2, step_3]
+
+    assert step_1.children() == [step_4, step_2, step_3]
+    assert step_1.parents() == []
+
+    assert step_4.children() == [step_2, step_3]
+    assert step_4.parents() == [step_1]
+
+    assert step_2.children() == [step_3]
+    assert step_2.parents() == [step_4, step_1]
+
+    assert step_3.children() == []
+    assert step_3.parents() == [step_2, step_4, step_1]
+
+    # Observe links after insertion
+    new_step_1_step_2_link = WorkflowStepDependency.objects.get(parent=step_1, child=step_2)
+    new_step_1_step_3_link = WorkflowStepDependency.objects.get(parent=step_1, child=step_3)
+    new_step_2_step_3_link = WorkflowStepDependency.objects.get(parent=step_2, child=step_3)
+
+    assert new_step_1_step_2_link.distance == step_1_step_2_link.distance + 1
+    assert new_step_1_step_3_link.distance == step_1_step_3_link.distance + 1
+    assert new_step_2_step_3_link.distance == step_2_step_3_link.distance
+
+    # Observe new links
+    step_1_step_4_link = WorkflowStepDependency.objects.get(parent=step_1, child=step_4)
+    step_4_step_2_link = WorkflowStepDependency.objects.get(parent=step_4, child=step_2)
+    step_4_step_3_link = WorkflowStepDependency.objects.get(parent=step_4, child=step_3)
+
+    assert step_1_step_4_link.distance == 1
+    assert step_4_step_2_link.distance == 1
+    assert step_4_step_3_link.distance == 2
+
+
+# @pytest.mark.django_db
+# def test_workflow_insert_step_existing(workflow_graph_steps: Workflow):
+#     step_1, _, _, _, step_5, step_6 = workflow_graph_steps.steps()
+
+#     # Ensure inserting an existing workflow step fails
+#     with pytest.raises(ValidationError):
+#         workflow_graph_steps.insert_step(step_5, parents=[step_1], children=[step_6])
+
+
+@pytest.mark.django_db
+def test_workflow_insert_step_circular(workflow_graph_steps: Workflow, workflow_step_factory):
+    """Test that inserting a step in a circularly dependent way fails."""
+    step_1, step_2, step_4, step_3, step_5, step_6 = workflow_graph_steps.steps()
+
+    # Ensure inserting an existing workflow step fails
+    new_step = workflow_step_factory(workflow=workflow_graph_steps)
+    with pytest.raises(ValidationError):
+        workflow_graph_steps.insert_step(new_step, parents=[step_6], children=[step_4])
+
+
+@pytest.mark.django_db
 def test_workflow_step_distance(workflow_with_steps: Workflow):
     """Test that WorkflowDependency.distance is used correctly."""
     step_1, step_2, step_3 = workflow_with_steps.steps()
@@ -196,7 +305,7 @@ def test_workflow_steps_depth(workflow_graph_steps: Workflow, workflow_step_fact
 
 @pytest.mark.django_db
 def test_workflow_no_circular_steps(workflow_graph_steps: Workflow):
-    step_1, _, _, _, _, step_6 = workflow_graph_steps.steps()
+    step_1, step_2, step_4, step_3, step_5, step_6 = workflow_graph_steps.steps()
     with pytest.raises(ValidationError):
         step_6.append_step(step_1)
 

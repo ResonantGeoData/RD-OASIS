@@ -4,7 +4,7 @@ from typing import List, Optional, Type
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
 from django_extensions.db.models import TimeStampedModel
@@ -81,6 +81,79 @@ class WorkflowStepDependency(TimeStampedModel):
             models.UniqueConstraint(fields=['parent', 'child'], name='unique_dependency')
         ]
 
+    @staticmethod
+    @transaction.atomic
+    def insert_step(
+        step: WorkflowStep,
+        parents: Optional[List[WorkflowStep]] = None,
+        children: Optional[List[WorkflowStep]] = None,
+    ):
+        """
+        Insert a workflow step at an arbitrary position in the workflow.
+
+        The parents and children arguments must each consist of a list of workflow steps that are
+        already present in the workflow, or None.
+        """
+        parent_steps = parents or []
+        child_steps = children or []
+
+        # If step already exists, ensure its parents and children are included
+        # TODO: INCORRECT, FIX
+        if step.pk is not None:
+            parent_steps.extend(step.parents())
+            child_steps.extend(step.children())
+
+        # Find all parents and children, not just direct ones. Intentionally leave in self
+        # referencing links, as they are necessary below.
+        all_parent_links = list(
+            WorkflowStepDependency.objects.filter(child__in=parent_steps).select_related('parent')
+        )
+        all_child_links = list(
+            WorkflowStepDependency.objects.filter(parent__in=child_steps).select_related('child')
+        )
+
+        # Ensure no circular references before continuing
+        all_parent_pks = {link.parent.pk for link in all_parent_links}
+        all_children_pks = {link.child.pk for link in all_child_links}
+        intersection = all_parent_pks & all_children_pks
+        if intersection:
+            steps_pk_str = ", ".join([str(x) for x in intersection])
+            raise ValidationError(
+                'Circular dependency: The following steps were found as both parents and '
+                f'children: {steps_pk_str}'
+            )
+
+        # Update links where the distance has changed. Only run if both
+        # lists are not empty, as otherwise the queryset is empty
+        if all_parent_links and all_child_links:
+            WorkflowStepDependency.objects.filter(
+                parent__in=[link.parent for link in all_parent_links],
+                child__in=[link.child for link in all_child_links],
+            ).exclude(child=models.F('parent')).update(distance=models.F('distance') + 1)
+
+        # Ensure step is saved, as we need it to exist for the following queries
+        if step.pk is None:
+            step.save()
+
+        # Construct new links, starting with self referencing link
+        new_links = [WorkflowStepDependency(parent=step, child=step, distance=0)]
+        new_links.extend(
+            [
+                WorkflowStepDependency(parent=link.parent, child=step, distance=link.distance + 1)
+                for link in all_parent_links
+            ]
+        )
+        new_links.extend(
+            [
+                WorkflowStepDependency(parent=step, child=link.child, distance=link.distance + 1)
+                for link in all_child_links
+            ]
+        )
+
+        # Create new links
+        WorkflowStepDependency.objects.bulk_create(new_links, ignore_conflicts=True)
+        return step
+
 
 class WorkflowStep(TimeStampedModel):
     """An algorithm to run in a workflow."""
@@ -143,32 +216,7 @@ class WorkflowStep(TimeStampedModel):
 
     def append_step(self, step: WorkflowStep):
         """Add a step to the workflow, running after this step."""
-        # Ensure that step is saved
-        step.save()
-
-        # Ensure no circular dependency is created
-        if self in step.children():
-            raise ValidationError(
-                'Cannot append parent step as a child of this step (circular dependency).'
-            )
-
-        # Create dependencies between this step's parents and the new step
-        dependencies = [
-            WorkflowStepDependency(parent=p.parent, child=step, distance=p.distance + 1)
-            for p in self._parent_links(None)
-        ]
-
-        # Create a dependency between this step and the new step
-        dependencies.append(WorkflowStepDependency(parent=self, child=step, distance=1))
-
-        # Add self reference dependency
-        dependencies.append(WorkflowStepDependency(parent=step, child=step, distance=0))
-
-        # Save dependencies, ignoring any possible duplicates
-        WorkflowStepDependency.objects.bulk_create(dependencies, ignore_conflicts=True)
-
-        # Return added step
-        return step
+        return WorkflowStepDependency.insert_step(step, parents=[self])
 
 
 @receiver(pre_delete, sender=WorkflowStep)
@@ -202,6 +250,7 @@ class Workflow(TimeStampedModel):
         query = (
             WorkflowStep.objects.filter(workflow=self)
             .annotate(max_parent_depth=models.Max('parent_links__distance'))
+            .exclude(max_parent_depth=None)  # exclude any un-linked steps
             .select_related('workflow')
             .order_by('max_parent_depth', 'modified')
         )
@@ -235,6 +284,25 @@ class Workflow(TimeStampedModel):
 
         # Return added_step
         return workflow_step
+
+    def insert_step(
+        self,
+        step: WorkflowStep,
+        parents: Optional[List[WorkflowStep]] = None,
+        children: Optional[List[WorkflowStep]] = None,
+    ):
+        """
+        Insert a workflow step at an arbitrary position in the workflow.
+
+        The parents and children arguments must each consist of a list of workflow steps that are
+        already present in the workflow, or None.
+        """
+
+        # Ensure step isn't already present in the workflow
+        # if step in self.steps():
+        # raise ValidationError('Step already exists in this workflow.')
+
+        return WorkflowStepDependency.insert_step(step, parents=parents, children=children)
 
 
 @receiver(post_delete, sender=Workflow)
