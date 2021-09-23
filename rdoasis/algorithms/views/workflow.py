@@ -1,6 +1,5 @@
 from django.core.exceptions import ValidationError
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import serializers
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
@@ -9,45 +8,15 @@ from rest_framework.status import HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from rest_framework_extensions.mixins import NestedViewSetMixin
 
-from rdoasis.algorithms.models import DockerImage, Workflow, WorkflowStep
+from rdoasis.algorithms.models import Workflow, WorkflowStep
 
-
-class DockerImageSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = DockerImage
-        fields = '__all__'
-
-
-class WorkflowSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Workflow
-        fields = '__all__'
-        read_only_fields = ['collection']
-
-
-class WorkflowStepSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = WorkflowStep
-        fields = '__all__'
-
-
-class WorkflowStepReturnSerializer(WorkflowStepSerializer):
-    docker_image = DockerImageSerializer()
-    parents = serializers.SerializerMethodField()
-
-    def get_parents(self, obj: WorkflowStep):
-        return [p.pk for p in obj.parents(depth=1)]
-
-
-class WorkflowStepCreateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = WorkflowStep
-        exclude = ['workflow']
-
-
-class WorkflowStepLinkSerializer(serializers.Serializer):
-    parent = serializers.IntegerField()
-    child = serializers.IntegerField()
+from .serializers import (
+    WorkflowSerializer,
+    WorkflowStepCreateSerializer,
+    WorkflowStepLinkSerializer,
+    WorkflowStepReturnSerializer,
+    WorkflowStepSerializer,
+)
 
 
 class WorkflowViewSet(ModelViewSet):
