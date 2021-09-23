@@ -7,7 +7,7 @@ from . import views
 from .views.workflow import WorkflowStepViewSet, WorkflowViewSet
 
 router = ExtendedSimpleRouter()
-workflow_routes = router.register('workflow', WorkflowViewSet)
+workflow_routes = router.register('api/workflow', WorkflowViewSet)
 workflow_routes.register(
     'steps',
     WorkflowStepViewSet,
