@@ -33,7 +33,7 @@ setup(
         'Programming Language :: Python',
     ],
     python_requires='>=3.8',
-    packages=find_packages(),
+    packages=find_packages(exclude=['django-rgd-workflow']),
     include_package_data=True,
     install_requires=[
         'celery',
@@ -60,6 +60,7 @@ setup(
         # RGD
         'django-rgd>=0.2.2',
         'django-rgd-imagery>=0.2.2',
+        'django-rgd-workflow',
     ],
     extras_require={
         'dev': [
