@@ -3,7 +3,7 @@ from typing import List
 import os
 from celery import shared_task
 
-from rdoasis.algorithms.models.workflow import WorkflowStep, WorkflowStepRun
+from rgd_workflow.models.workflow import WorkflowStep, WorkflowStepRun
 
 from .common import ManagedTask
 from .helpers import workflow_step_needs_to_run, workflow_step_ready_to_run

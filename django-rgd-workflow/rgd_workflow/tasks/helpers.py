@@ -7,14 +7,13 @@
 # import time
 
 # import GPUtil
-from rdoasis.algorithms.models.workflow import Workflow
+from rgd_workflow.models.workflow import Workflow
 from django.conf import settings
 from typing import Optional, Tuple
 from celery.utils.log import get_task_logger
 
-from rdoasis.algorithms.models import WorkflowStep, WorkflowStepRun
+from rgd_workflow.models import WorkflowStep, WorkflowStepRun
 from rdoasis.settings import (
-    DevelopmentConfiguration,
     ProductionConfiguration,
     HerokuProductionConfiguration,
 )

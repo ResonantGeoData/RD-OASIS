@@ -274,7 +274,7 @@ class Workflow(TimeStampedModel):
 
     def run(self):
         """Run the workflow."""
-        from rdoasis.algorithms.tasks.jobs import run_workflow
+        from rgd_workflow.tasks.jobs import run_workflow
 
         run_workflow.delay(self.pk)
 
