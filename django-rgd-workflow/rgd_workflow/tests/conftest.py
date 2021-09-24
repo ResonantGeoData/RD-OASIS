@@ -1,8 +1,7 @@
 import pytest
 from pytest_factoryboy import register
 from rest_framework.test import APIClient
-
-from rdoasis.algorithms.models.workflow import WorkflowStep
+from rgd_workflow.models.workflow import WorkflowStep
 
 from .factories import DockerImageFactory, WorkflowFactory, WorkflowStepFactory
 

@@ -1,6 +1,5 @@
 from rest_framework import serializers
-
-from rdoasis.algorithms.models import DockerImage, Workflow, WorkflowStep
+from rgd_workflow.models import DockerImage, Workflow, WorkflowStep
 
 
 class DockerImageSerializer(serializers.ModelSerializer):

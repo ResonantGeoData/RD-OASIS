@@ -3,9 +3,8 @@ from typing import List
 from django.core.exceptions import ValidationError
 from django.db import models
 import pytest
-
-from rdoasis.algorithms.models import Workflow, WorkflowStep
-from rdoasis.algorithms.models.workflow import WorkflowStepDependency
+from rgd_workflow.models import Workflow, WorkflowStep
+from rgd_workflow.models.workflow import WorkflowStepDependency
 
 
 @pytest.mark.django_db

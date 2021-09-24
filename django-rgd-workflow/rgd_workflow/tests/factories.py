@@ -1,6 +1,5 @@
 import factory.django
-
-from rdoasis.algorithms import models
+from rgd_workflow import models
 
 
 class WorkflowFactory(factory.django.DjangoModelFactory):
