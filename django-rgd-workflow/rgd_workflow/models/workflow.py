@@ -7,10 +7,11 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
+from django.utils.translation import gettext_lazy as _
 from django_extensions.db.models import TimeStampedModel
 from rgd.models import ChecksumFile, Collection
 
-__all__ = ['DockerImage', 'WorkflowStepDependency', 'WorkflowStep', 'Workflow']
+__all__ = ['DockerImage', 'WorkflowStepDependency', 'WorkflowStep', 'WorkflowStepRun', 'Workflow']
 
 
 def create_default_workflow_collection():
@@ -80,6 +81,21 @@ class WorkflowStepDependency(TimeStampedModel):
         constraints = [
             models.UniqueConstraint(fields=['parent', 'child'], name='unique_dependency')
         ]
+
+
+class WorkflowStepRun(TimeStampedModel):
+    """Track the individual runs of workflow steps."""
+
+    class Status(models.TextChoices):
+        CREATED = 'created', _('Created but not queued')
+        QUEUED = 'queued', _('Queued for processing')
+        RUNNING = 'running', _('Running')
+        FAILED = 'failed', _('Failed')
+        SUCCEEDED = 'success', _('Succeeded')
+
+    status = models.CharField(choices=Status.choices, default=Status.QUEUED, max_length=16)
+    workflow_step = models.ForeignKey('WorkflowStep', related_name='runs', on_delete=models.CASCADE)
+    output = models.TextField()
 
 
 class WorkflowStep(TimeStampedModel):
@@ -170,6 +186,19 @@ class WorkflowStep(TimeStampedModel):
         # Return added step
         return step
 
+    @property
+    def completed(self) -> bool:
+        """Return true if this step has been successfully completed."""
+
+        return WorkflowStepRun.objects.filter(
+            workflow_step=self, status=WorkflowStepRun.Status.SUCCEEDED
+        ).exists()
+
+    @property
+    def last_run(self) -> Optional[WorkflowStepRun]:
+        """Return the last run of this workflow step, which may be currently running."""
+        return WorkflowStepRun.objects.filter(workflow_step=self).order_by('-modified').first()
+
 
 @receiver(pre_delete, sender=WorkflowStep)
 def workflow_step_distance_adjust(sender: Type[WorkflowStep], instance: WorkflowStep, **kwargs):
@@ -235,6 +264,20 @@ class Workflow(TimeStampedModel):
 
         # Return added_step
         return workflow_step
+
+    @property
+    def completed(self) -> bool:
+        """Return true if all steps in this workflow have succeeded."""
+
+        # TODO: THIS IS INEFFICIENT, FIX ONCE ABLE
+        steps = self.steps()
+        return all(step.completed for step in steps)
+
+    def run(self):
+        """Run the workflow."""
+        from rdoasis.algorithms.tasks.jobs import run_workflow
+
+        run_workflow.delay(self.pk)
 
 
 @receiver(post_delete, sender=Workflow)
