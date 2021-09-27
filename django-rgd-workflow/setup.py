@@ -11,7 +11,7 @@ else:
     long_description = ''
 
 setup(
-    name='RD-OASIS',
+    name='django-rgd-workflow',
     version='0.1.0',
     description='',
     long_description=long_description,
@@ -33,7 +33,7 @@ setup(
         'Programming Language :: Python',
     ],
     python_requires='>=3.8',
-    packages=find_packages(exclude=['django-rgd-workflow']),
+    packages=find_packages(),
     include_package_data=True,
     install_requires=[
         'celery',
@@ -59,8 +59,6 @@ setup(
         'gunicorn',
         # RGD
         'django-rgd>=0.2.2',
-        'django-rgd-imagery>=0.2.2',
-        'django-rgd-workflow',
     ],
     extras_require={
         'dev': [
@@ -71,7 +69,6 @@ setup(
             'tox',
         ],
         'worker': [
-            'django-rgd-imagery[worker]>=0.2.2',
             'docker',
         ],
         'fuse': [

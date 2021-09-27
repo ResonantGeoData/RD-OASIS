@@ -228,7 +228,8 @@ def _validate_docker(docker_file):
 
 
 def _overall_score_and_result_type(datafile):
-    # In the future, inspect the data to determine the result type.  For now, just extract a float from the data file
+    # In the future, inspect the data to determine the result type.
+    # For now, just extract a float from the data file
     try:
         overall_score = float(datafile.readline())
         result_type = ScoreResult.ResultTypes.SIMPLE

@@ -2,8 +2,6 @@ name: ci
 on:
   pull_request:
   push:
-    branches:
-      - master
   schedule:
     - cron: "0 0 * * *"
 jobs:
@@ -11,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:latest
+        image: postgis/postgis:latest
         env:
           POSTGRES_DB: django
           POSTGRES_PASSWORD: postgres
