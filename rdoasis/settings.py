@@ -66,6 +66,7 @@ class RdoasisMixin(CrispyFormsMixin, GeoDjangoMixin, SwaggerMixin, ConfigMixin):
         # Install local apps first, to ensure any overridden resources are found first
         configuration.INSTALLED_APPS = [
             'rdoasis.core.apps.CoreConfig',
+            'rdoasis.algorithms.apps.CoreConfig',
         ] + configuration.INSTALLED_APPS
 
         # Install additional apps
@@ -75,7 +76,6 @@ class RdoasisMixin(CrispyFormsMixin, GeoDjangoMixin, SwaggerMixin, ConfigMixin):
             'django_cleanup.apps.CleanupConfig',
             'rgd',
             'rgd_imagery',
-            'rgd_workflow',
         ]
 
         configuration.REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'].append(

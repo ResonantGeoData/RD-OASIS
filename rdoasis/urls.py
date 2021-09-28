@@ -24,7 +24,6 @@ urlpatterns = [
     path('', include('rgd_imagery.urls')),
     # Redirect homepage to RGD core app homepage
     path(r'', RedirectView.as_view(url='rgd', permanent=False), name='index'),
-    path('', include('rgd_workflow.urls')),
 ]
 
 schema_view = get_schema_view(

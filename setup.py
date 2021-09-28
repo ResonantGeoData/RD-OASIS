@@ -60,7 +60,6 @@ setup(
         # RGD
         'django-rgd>=0.2.2',
         'django-rgd-imagery>=0.2.2',
-        'django-rgd-workflow',
     ],
     extras_require={
         'dev': [
