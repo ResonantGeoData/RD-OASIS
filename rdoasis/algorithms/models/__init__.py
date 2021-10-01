@@ -1,7 +1,6 @@
-from django.contrib.postgres.fields import ArrayField
 from django.db import models
-from django_extensions.db.models import TimeStampedModel
 from django.utils.translation import gettext_lazy as _
+from django_extensions.db.models import TimeStampedModel
 from rgd.models import ChecksumFile
 
 
@@ -42,9 +41,11 @@ class Algorithm(TimeStampedModel):
     docker_image = models.ForeignKey(
         DockerImage, related_name='workflow_steps', on_delete=models.CASCADE
     )
+    # The command to run the image with
+    command = models.CharField(max_length=1000)
 
-    # The command to run the image with, as an array of strings
-    command = ArrayField(models.CharField(max_length=255))
+    # The input data
+    input_dataset = models.ManyToManyField(ChecksumFile, related_name='algorithms')
 
 
 class AlgorithmTask(TimeStampedModel):
@@ -59,4 +60,5 @@ class AlgorithmTask(TimeStampedModel):
 
     algorithm = models.ForeignKey(Algorithm, related_name='tasks', on_delete=models.CASCADE)
     status = models.CharField(choices=Status.choices, default=Status.QUEUED, max_length=16)
-    output = models.TextField()
+    output_dataset = models.ManyToManyField(ChecksumFile, related_name='algorithm_tasks')
+    output_log = models.TextField()
