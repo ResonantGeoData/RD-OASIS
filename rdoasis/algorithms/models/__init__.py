@@ -42,7 +42,7 @@ class Algorithm(TimeStampedModel):
         DockerImage, related_name='workflow_steps', on_delete=models.CASCADE
     )
     # The command to run the image with
-    command = models.CharField(max_length=1000)
+    command = models.CharField(max_length=1000, null=True, default=None)
 
     # The input data
     input_dataset = models.ManyToManyField(ChecksumFile, related_name='algorithms')

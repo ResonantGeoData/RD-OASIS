@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class CoreConfig(AppConfig):
+class AlgorithmsConfig(AppConfig):
     name = 'rdoasis.algorithms'
     verbose_name = 'RD-OASIS: Algorithms'

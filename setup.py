@@ -58,9 +58,10 @@ setup(
         'django-s3-file-field[boto3]',
         'gunicorn',
         # RGD
-        'django-rgd>=0.2.2',
+        'django-rgd>=0.2.6dev6',
         'django-rgd-imagery>=0.2.2',
     ],
+    dependency_links=['https://girder.github.io/large_image_wheels'],
     extras_require={
         'dev': [
             'django-composed-configuration[dev]',

@@ -5,11 +5,12 @@ import shutil
 import tempfile
 from typing import List, Set
 
-from algorithms.models import Algorithm, AlgorithmTask
 from billiard.einfo import ExceptionInfo
 import celery
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rgd.models.common import ChecksumFile
+
+from rdoasis.algorithms.models import Algorithm, AlgorithmTask
 
 
 @dataclass
@@ -98,6 +99,7 @@ class ManagedTask(celery.Task):
         self.algorithm_task.save()
 
         # Ensure necessary files and directories exist
+        self.output_dir = Path(tempfile.mkdtemp())
         self._download_input_dataset()
 
         # Construct data

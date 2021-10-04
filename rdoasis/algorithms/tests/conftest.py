@@ -2,7 +2,7 @@ import pytest
 from pytest_factoryboy import register
 from rest_framework.test import APIClient
 
-from .factories import UserFactory
+from .factories import AlgorithmFactory, AlgorithmTaskFactory, DockerImageFactory, UserFactory
 
 
 @pytest.fixture
@@ -17,4 +17,7 @@ def authenticated_api_client(user) -> APIClient:
     return client
 
 
+register(AlgorithmFactory)
+register(AlgorithmTaskFactory)
+register(DockerImageFactory)
 register(UserFactory)
