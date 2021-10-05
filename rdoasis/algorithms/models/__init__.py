@@ -9,11 +9,11 @@ class DockerImage(TimeStampedModel):
     name = models.CharField(null=True, max_length=255)
 
     # The image id to pull down
-    image_id = models.CharField(null=True, max_length=255)
+    image_id = models.CharField(null=True, blank=True, max_length=255)
 
     # If the docker image was provided as a file
     image_file = models.ForeignKey(
-        ChecksumFile, related_name='docker_images', null=True, on_delete=models.CASCADE
+        ChecksumFile, related_name='docker_images', null=True, blank=True, on_delete=models.CASCADE
     )
 
     # TODO: Add field for registry, for other images
@@ -41,11 +41,12 @@ class Algorithm(TimeStampedModel):
     docker_image = models.ForeignKey(
         DockerImage, related_name='workflow_steps', on_delete=models.CASCADE
     )
+
     # The command to run the image with
-    command = models.CharField(max_length=1000, null=True, default=None)
+    command = models.CharField(max_length=1000, null=True, blank=True, default=None)
 
     # The input data
-    input_dataset = models.ManyToManyField(ChecksumFile, related_name='algorithms')
+    input_dataset = models.ManyToManyField(ChecksumFile, blank=True, related_name='algorithms')
 
 
 class AlgorithmTask(TimeStampedModel):
@@ -60,5 +61,7 @@ class AlgorithmTask(TimeStampedModel):
 
     algorithm = models.ForeignKey(Algorithm, related_name='tasks', on_delete=models.CASCADE)
     status = models.CharField(choices=Status.choices, default=Status.QUEUED, max_length=16)
-    output_dataset = models.ManyToManyField(ChecksumFile, related_name='algorithm_tasks')
-    output_log = models.TextField()
+    output_log = models.TextField(null=True, blank=True)
+    output_dataset = models.ManyToManyField(
+        ChecksumFile, blank=True, related_name='algorithm_tasks'
+    )
