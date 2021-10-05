@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 import os
 from pathlib import Path
 import shutil
@@ -11,15 +10,6 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from rgd.models.common import ChecksumFile
 
 from rdoasis.algorithms.models import Algorithm, AlgorithmTask
-
-
-@dataclass
-class AlgorithmTaskData:
-    algorithm: Algorithm
-    algorithm_task: AlgorithmTask
-    output_dir: str
-    input_dataset_root_dir: str
-    input_dataset_paths: List[str]
 
 
 class ManagedTask(celery.Task):
@@ -42,32 +32,41 @@ class ManagedTask(celery.Task):
 
                 checksum_file.save()
                 new_checksum_files.append(checksum_file)
-
-            existing_filenames.update(new_filenames)
+                existing_filenames.add(f)
 
         self.algorithm_task.output_dataset.add(*new_checksum_files)
 
     def _download_input_dataset(self):
         """Download the input dataset."""
-        self.input_dataset_paths = []
-        self.input_dataset_root_dir = tempfile.mkdtemp()
+        self.input_dataset_paths: List[Path] = []
+        self.input_dataset_root_dir = Path(tempfile.mkdtemp())
 
         files: List[ChecksumFile] = list(self.algorithm.input_dataset.all())
         for checksum_file in files:
-            fd, path = tempfile.mkstemp(dir=self.input_dataset_root_dir)
-            self.input_dataset_paths.append(path)
+            self.input_dataset_paths.append(
+                checksum_file.download_to_local_path(self.input_dataset_root_dir)
+            )
 
-            with os.fdopen(fd, 'wb') as file_in:
-                shutil.copyfileobj(checksum_file.file, file_in)
-                file_in.flush()
+    def _setup(self, **kwargs):
+        # Set algorithm task and update status
+        self.algorithm_task: AlgorithmTask = AlgorithmTask.objects.select_related('algorithm').get(
+            pk=kwargs['algorithm_task_id']
+        )
+        self.algorithm_task.status = AlgorithmTask.Status.RUNNING
+        self.algorithm_task.save()
+
+        # Set algorithm
+        self.algorithm: Algorithm = self.algorithm_task.algorithm
+
+        # Ensure necessary files and directories exist
+        self.output_dir = Path(tempfile.mkdtemp())
+        self._download_input_dataset()
 
     def _cleanup(self):
         """Perform any necessary cleanup."""
         # Remove dirs
         shutil.rmtree(self.output_dir, ignore_errors=True)
         shutil.rmtree(self.input_dataset_root_dir, ignore_errors=True)
-
-        # TODO: Remove any individual files if necessary
 
     def on_failure(self, exc, task_id, args, kwargs, einfo: ExceptionInfo):
         self.algorithm_task.status = AlgorithmTask.Status.FAILED
@@ -84,32 +83,10 @@ class ManagedTask(celery.Task):
         self.algorithm_task.output_log = retval
         self.algorithm_task.save()
 
-        # Cleanup
         self._cleanup()
 
     def __call__(self, **kwargs):
-        # Set algorithm and task on task instance
-        self.algorithm_task: AlgorithmTask = AlgorithmTask.objects.select_related('algorithm').get(
-            pk=kwargs['algorithm_task_id']
-        )
-        self.algorithm: Algorithm = self.algorithm_task.algorithm
-
-        # Set run status
-        self.algorithm_task.status = AlgorithmTask.Status.RUNNING
-        self.algorithm_task.save()
-
-        # Ensure necessary files and directories exist
-        self.output_dir = Path(tempfile.mkdtemp())
-        self._download_input_dataset()
-
-        # Construct data
-        data = AlgorithmTaskData(
-            algorithm=self.algorithm,
-            algorithm_task=self.algorithm_task,
-            output_dir=self.output_dir,
-            input_dataset_root_dir=self.input_dataset_root_dir,
-            input_dataset_paths=self.input_dataset_paths,
-        )
+        self._setup(**kwargs)
 
         # Run task
-        return self.run(data=data, **kwargs)
+        return self.run(**kwargs)
