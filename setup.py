@@ -59,7 +59,7 @@ setup(
         'gunicorn',
         # RGD
         'django-rgd>=0.2.6dev6',
-        'django-rgd-imagery>=0.2.2',
+        'django-rgd-imagery>=0.2.6dev6',
     ],
     dependency_links=['https://girder.github.io/large_image_wheels'],
     extras_require={
