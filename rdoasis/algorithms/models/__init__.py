@@ -32,6 +32,24 @@ class DockerImage(TimeStampedModel):
         ]
 
 
+class AlgorithmTask(TimeStampedModel):
+    """A run of an algorithm."""
+
+    class Status(models.TextChoices):
+        CREATED = 'created', _('Created but not queued')
+        QUEUED = 'queued', _('Queued for processing')
+        RUNNING = 'running', _('Running')
+        FAILED = 'failed', _('Failed')
+        SUCCEEDED = 'success', _('Succeeded')
+
+    algorithm = models.ForeignKey('Algorithm', related_name='tasks', on_delete=models.CASCADE)
+    status = models.CharField(choices=Status.choices, default=Status.QUEUED, max_length=16)
+    output_log = models.TextField(null=True, blank=True, default='')
+    output_dataset = models.ManyToManyField(
+        ChecksumFile, blank=True, related_name='algorithm_tasks'
+    )
+
+
 class Algorithm(TimeStampedModel):
     """An algorithm to run."""
 
@@ -48,20 +66,11 @@ class Algorithm(TimeStampedModel):
     # The input data
     input_dataset = models.ManyToManyField(ChecksumFile, blank=True, related_name='algorithms')
 
+    def run(self):
+        # Prevent circular import
+        from rdoasis.algorithms.tasks import run_algorithm
 
-class AlgorithmTask(TimeStampedModel):
-    """A run of an algorithm."""
+        task = AlgorithmTask.objects.create(algorithm=self)
+        run_algorithm.delay(algorithm_task_id=task.pk)
 
-    class Status(models.TextChoices):
-        CREATED = 'created', _('Created but not queued')
-        QUEUED = 'queued', _('Queued for processing')
-        RUNNING = 'running', _('Running')
-        FAILED = 'failed', _('Failed')
-        SUCCEEDED = 'success', _('Succeeded')
-
-    algorithm = models.ForeignKey(Algorithm, related_name='tasks', on_delete=models.CASCADE)
-    status = models.CharField(choices=Status.choices, default=Status.QUEUED, max_length=16)
-    output_log = models.TextField(null=True, blank=True)
-    output_dataset = models.ManyToManyField(
-        ChecksumFile, blank=True, related_name='algorithm_tasks'
-    )
+        return task
