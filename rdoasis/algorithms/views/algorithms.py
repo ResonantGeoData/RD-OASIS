@@ -1,4 +1,8 @@
+from drf_yasg.utils import swagger_auto_schema, no_body
+from rest_framework.decorators import action
+from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from rest_framework_extensions.mixins import NestedViewSetMixin
 
@@ -17,6 +21,14 @@ class AlgorithmViewSet(ModelViewSet):
     queryset = Algorithm.objects.all()
     serializer_class = AlgorithmSerializer
     pagination_class = LimitOffsetPagination
+
+    @swagger_auto_schema(method='POST', request_body=no_body)
+    @action(detail=True, methods=['POST'])
+    def run(self, request, pk):
+        alg: Algorithm = get_object_or_404(Algorithm, pk=pk)
+        algorithm_task = alg.run()
+
+        return Response(AlgorithmTaskSerializer(algorithm_task).data)
 
 
 class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):

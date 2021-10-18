@@ -13,9 +13,7 @@ class AlgorithmSerializer(serializers.ModelSerializer):
     class Meta:
         model = Algorithm
         fields = '__all__'
-        read_only_fields = ['collection']
-
-    docker_image = DockerImageSerializer()
+        read_only_fields = ['created', 'modified']
 
 
 class AlgorithmTaskSerializer(serializers.ModelSerializer):
