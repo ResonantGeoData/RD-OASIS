@@ -39,13 +39,21 @@ class ManagedTask(celery.Task):
     def _download_input_dataset(self):
         """Download the input dataset."""
         self.input_dataset_paths: List[Path] = []
-        self.input_dataset_root_dir = Path(tempfile.mkdtemp())
-
         files: List[ChecksumFile] = list(self.algorithm.input_dataset.all())
         for checksum_file in files:
-            self.input_dataset_paths.append(
-                checksum_file.download_to_local_path(self.input_dataset_root_dir)
-            )
+            self.input_dataset_paths.append(checksum_file.download_to_local_path(self.input_dir))
+
+    def _create_directories(self):
+        # Create root dir
+        self.root_dir = Path(tempfile.mkdtemp())
+
+        # Create input dir
+        self.input_dir = self.root_dir / 'input'
+        self.input_dir.mkdir()
+
+        # Create output dir
+        self.output_dir = self.root_dir / 'output'
+        self.output_dir.mkdir()
 
     def _setup(self, **kwargs):
         # Set algorithm task and update status
@@ -59,18 +67,22 @@ class ManagedTask(celery.Task):
         self.algorithm: Algorithm = self.algorithm_task.algorithm
 
         # Ensure necessary files and directories exist
-        self.output_dir = Path(tempfile.mkdtemp())
+        self._create_directories()
+
+        # Download input
         self._download_input_dataset()
 
     def _cleanup(self):
         """Perform any necessary cleanup."""
         # Remove dirs
-        shutil.rmtree(self.output_dir, ignore_errors=True)
-        shutil.rmtree(self.input_dataset_root_dir, ignore_errors=True)
+        shutil.rmtree(self.root_dir, ignore_errors=True)
 
     def on_failure(self, exc, task_id, args, kwargs, einfo: ExceptionInfo):
+        if not self.algorithm_task.output_log:
+            self.algorithm_task.output_log = ''
+
+        self.algorithm_task.output_log += einfo.traceback
         self.algorithm_task.status = AlgorithmTask.Status.FAILED
-        self.algorithm_task.output_log = einfo.traceback
         self.algorithm_task.save()
 
         self._cleanup()
@@ -78,9 +90,11 @@ class ManagedTask(celery.Task):
     def on_success(self, retval, task_id, args, kwargs):
         self._upload_result_files()
 
-        # Mark algorithm task as succeeded and save logs
-        self.algorithm_task.status = AlgorithmTask.Status.SUCCEEDED
-        self.algorithm_task.output_log = retval
+        # Check for nonzero exit code
+        status = AlgorithmTask.Status.FAILED if retval else AlgorithmTask.Status.SUCCEEDED
+
+        # Mark task status and save logs
+        self.algorithm_task.status = status
         self.algorithm_task.save()
 
         self._cleanup()

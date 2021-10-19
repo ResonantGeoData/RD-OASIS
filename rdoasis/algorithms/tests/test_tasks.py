@@ -126,12 +126,11 @@ def test_managed_task_setup(algorithm_task_with_input: AlgorithmTask):
     assert algorithm_task_with_input.status == AlgorithmTask.Status.RUNNING
 
     # Assert downloaded files
-    root_dir = base_task.input_dataset_root_dir
     input_dataset = list(algorithm_task_with_input.algorithm.input_dataset.all())
 
     assert len(input_dataset) == len(base_task.input_dataset_paths)
     assert all([p.exists() for p in base_task.input_dataset_paths])
-    assert all([root_dir in p.parents for p in base_task.input_dataset_paths])
+    assert all([base_task.input_dir in p.parents for p in base_task.input_dataset_paths])
 
     # Cleanup, not tested here
     base_task._cleanup()
