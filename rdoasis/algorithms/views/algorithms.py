@@ -106,7 +106,7 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
         query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
     )
     @action(detail=True, methods=['GET'])
-    def files(self, request, parent_lookup_algorithm__pk: str, pk: str):
+    def output(self, request, parent_lookup_algorithm__pk: str, pk: str):
         """Return the task output dataset as a list of files."""
         task: AlgorithmTask = get_object_or_404(
             AlgorithmTask, algorithm__pk=parent_lookup_algorithm__pk, pk=pk
