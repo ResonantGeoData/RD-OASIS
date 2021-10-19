@@ -13,6 +13,7 @@ from rdoasis.algorithms.models import Algorithm, AlgorithmTask, DockerImage
 
 from .serializers import (
     AlgorithmSerializer,
+    AlgorithmTaskLogsSerializer,
     AlgorithmTaskSerializer,
     DockerImageSerializer,
     LimitOffsetSerializer,
@@ -75,15 +76,31 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
         algorithm_pk = self.request.parser_context['kwargs']['parent_lookup_algorithm__pk']
         return AlgorithmTask.objects.filter(algorithm__pk=algorithm_pk)
 
-    @swagger_auto_schema(responses={200: 'The log text.'})
+    @swagger_auto_schema(
+        query_serializer=AlgorithmTaskLogsSerializer(), responses={200: 'The log text.'}
+    )
     @action(detail=True, methods=['GET'], renderer_classes=[PlainTextRenderer])
     def logs(self, request, parent_lookup_algorithm__pk: str, pk: str):
         """Return the task logs."""
+        # Fetch task
         task: AlgorithmTask = get_object_or_404(
             AlgorithmTask, algorithm__pk=parent_lookup_algorithm__pk, pk=pk
         )
 
-        return Response(task.output_log, content_type='text/plain')
+        # Grab params
+        serializer = AlgorithmTaskLogsSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        head = serializer.validated_data.get('head')
+        tail = serializer.validated_data.get('tail')
+
+        # Slice text if required
+        response_text = task.output_log
+        if head or tail:
+            lines = response_text.splitlines()
+            lines = lines[-tail:] if tail else lines[:head]
+            response_text = '\n'.join(lines)
+
+        return Response(response_text, content_type='text/plain')
 
     @swagger_auto_schema(
         query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
