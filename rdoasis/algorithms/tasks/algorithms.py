@@ -3,7 +3,6 @@ from celery.utils.log import get_task_logger
 
 from rdoasis.algorithms.tasks.common import ManagedTask
 
-
 logger = get_task_logger(__name__)
 
 

@@ -3,6 +3,11 @@ from rest_framework import serializers
 from rdoasis.algorithms.models import Algorithm, AlgorithmTask, DockerImage
 
 
+class LimitOffsetSerializer(serializers.Serializer):
+    limit = serializers.IntegerField(required=False)
+    offset = serializers.IntegerField(required=False)
+
+
 class DockerImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = DockerImage
@@ -19,4 +24,4 @@ class AlgorithmSerializer(serializers.ModelSerializer):
 class AlgorithmTaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = AlgorithmTask
-        fields = '__all__'
+        exclude = ['output_log', 'output_dataset']
