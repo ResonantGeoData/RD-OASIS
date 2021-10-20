@@ -35,6 +35,8 @@ def run_algorithm(self: ManagedTask, *args, **kwargs):
         container: Container = client.containers.run(
             image,
             command=self.algorithm.command,
+            entrypoint=self.algorithm.entrypoint,
+            environment=self.algorithm.environment,
             mounts=mounts,
             device_requests=device_requests,
             working_dir=str(self.root_dir),
