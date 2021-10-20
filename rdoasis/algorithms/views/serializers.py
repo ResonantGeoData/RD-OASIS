@@ -20,6 +20,9 @@ class AlgorithmSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['created', 'modified']
 
+    # Restrict JSONField to DictField with string values
+    environment = serializers.DictField(child=serializers.CharField())
+
 
 class AlgorithmTaskSerializer(serializers.ModelSerializer):
     class Meta:

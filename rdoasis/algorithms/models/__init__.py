@@ -63,8 +63,19 @@ class Algorithm(TimeStampedModel):
     # The command to run the image with
     command = models.CharField(max_length=1000, null=True, blank=True, default=None)
 
+    # Environment variables to be passed to the container
+    environment = models.JSONField(default=dict)
+
     # The input data
     input_dataset = models.ManyToManyField(ChecksumFile, blank=True, related_name='algorithms')
+
+    class Meta:
+        constraints = [
+            # Enforce that top level is an object
+            models.CheckConstraint(
+                name='only_objects', check=models.Q(environment__startswith='{')
+            ),
+        ]
 
     def run(self):
         # Prevent circular import
