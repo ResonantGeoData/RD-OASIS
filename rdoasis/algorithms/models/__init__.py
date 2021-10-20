@@ -63,6 +63,9 @@ class Algorithm(TimeStampedModel):
     # The command to run the image with
     command = models.CharField(max_length=1000, null=True, blank=True, default=None)
 
+    # The entrypoint of the container
+    entrypoint = models.CharField(max_length=1000, null=True, blank=True, default=None)
+
     # Environment variables to be passed to the container
     environment = models.JSONField(default=dict)
 

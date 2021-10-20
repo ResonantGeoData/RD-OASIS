@@ -21,6 +21,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='algorithm',
-            constraint=models.CheckConstraint(check=models.Q(('environment__startswith', '{')), name='only_objects'),
+            constraint=models.CheckConstraint(
+                check=models.Q(('environment__startswith', '{')), name='only_objects'
+            ),
         ),
     ]
