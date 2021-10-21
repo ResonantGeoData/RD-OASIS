@@ -69,6 +69,9 @@ class Algorithm(TimeStampedModel):
     # Environment variables to be passed to the container
     environment = models.JSONField(default=dict)
 
+    # Whether the GPU should be requested or not
+    gpu = models.BooleanField(default=False)
+
     # The input data
     input_dataset = models.ManyToManyField(ChecksumFile, blank=True, related_name='algorithms')
 

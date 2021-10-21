@@ -26,7 +26,10 @@ def run_algorithm_task(self: ManagedTask, *args, **kwargs):
     # Construct container arguments
     paths_to_mount = (self.input_dir, self.output_dir)
     mounts = [Mount(target=str(path), source=str(path), type='bind') for path in paths_to_mount]
-    device_requests = [DeviceRequest(count=-1, capabilities=[['gpu']])]
+
+    device_requests = []
+    if self.algorithm.gpu:
+        device_requests.append(DeviceRequest(count=-1, capabilities=[['gpu']]))
 
     # Instantiate docker client
     client = docker.from_env()
