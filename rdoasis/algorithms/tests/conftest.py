@@ -12,6 +12,13 @@ from .factories import (
     UserFactory,
 )
 
+# For some reason, these need to be declared first
+register(AlgorithmFactory)
+register(AlgorithmTaskFactory)
+register(ChecksumFileFactory)
+register(DockerImageFactory)
+register(UserFactory)
+
 
 @pytest.fixture
 def api_client() -> APIClient:
@@ -33,10 +40,3 @@ def algorithm_task_with_input(
     algorithm_task.algorithm.input_dataset.add(*files)
 
     return algorithm_task
-
-
-register(AlgorithmFactory)
-register(AlgorithmTaskFactory)
-register(ChecksumFileFactory)
-register(DockerImageFactory)
-register(UserFactory)

@@ -25,7 +25,8 @@ def succeeding_task(self, *args, **kwargs):
     with open(test_file, 'w') as outfile:
         outfile.write('Test Output')
 
-    return 'OUTPUT!'
+    # Test that on_success saves this
+    self.algorithm_task.output_log = 'OUTPUT!'
 
 
 @celery.shared_task(base=ManagedTask, bind=True)
@@ -107,9 +108,6 @@ def test_failed_task(algorithm_task: AlgorithmTask):
 
     files: List[ChecksumFile] = list(algorithm_task.output_dataset.all())
     assert len(files) == 0
-
-
-# TODO: Add task that tests docker run
 
 
 @pytest.mark.django_db

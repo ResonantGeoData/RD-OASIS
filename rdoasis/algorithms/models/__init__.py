@@ -69,6 +69,9 @@ class Algorithm(TimeStampedModel):
     # Environment variables to be passed to the container
     environment = models.JSONField(default=dict)
 
+    # Whether the GPU should be requested or not
+    gpu = models.BooleanField(default=False)
+
     # The input data
     input_dataset = models.ManyToManyField(ChecksumFile, blank=True, related_name='algorithms')
 
@@ -82,9 +85,9 @@ class Algorithm(TimeStampedModel):
 
     def run(self):
         # Prevent circular import
-        from rdoasis.algorithms.tasks import run_algorithm
+        from rdoasis.algorithms.tasks import run_algorithm_task
 
         task = AlgorithmTask.objects.create(algorithm=self)
-        run_algorithm.delay(algorithm_task_id=task.pk)
+        run_algorithm_task.delay(algorithm_task_id=task.pk)
 
         return task

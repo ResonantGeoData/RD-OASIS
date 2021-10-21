@@ -71,7 +71,7 @@ setup(
             'tox',
         ],
         'worker': [
-            'django-rgd-imagery[worker]>=0.2.2',
+            'django-rgd-imagery[worker]>=0.2.6dev6',
             'docker',
         ],
         'fuse': [
