@@ -82,9 +82,9 @@ class Algorithm(TimeStampedModel):
 
     def run(self):
         # Prevent circular import
-        from rdoasis.algorithms.tasks import run_algorithm
+        from rdoasis.algorithms.tasks import run_algorithm_task
 
         task = AlgorithmTask.objects.create(algorithm=self)
-        run_algorithm.delay(algorithm_task_id=task.pk)
+        run_algorithm_task.delay(algorithm_task_id=task.pk)
 
         return task

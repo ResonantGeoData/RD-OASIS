@@ -7,7 +7,16 @@ logger = get_task_logger(__name__)
 
 
 @celery.shared_task(base=ManagedTask, bind=True)
-def run_algorithm(self: ManagedTask, *args, **kwargs):
+def run_algorithm_task(self: ManagedTask, *args, **kwargs):
+    """
+    Run an algorithm task.
+
+    Args:
+        algorithm_task_id: The ID of the algorithm task to run.s
+
+    Returns:
+        The status code returned from docker.
+    """
     # Import docker here to django can import task without docker
     import docker
     from docker.errors import DockerException, ImageNotFound
@@ -58,6 +67,9 @@ def run_algorithm(self: ManagedTask, *args, **kwargs):
         self.algorithm_task.output_log += log.decode('utf-8').replace('\x00', '\uFFFD')
         self.algorithm_task.save(update_fields=['output_log'])
 
-    # Return status code
+    # Wait for container to exit and remove
     res = container.wait()
+    container.remove()
+
+    # Return status code
     return res['StatusCode']
