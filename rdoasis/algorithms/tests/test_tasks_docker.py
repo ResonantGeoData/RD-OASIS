@@ -1,11 +1,9 @@
 from typing import List
 
-import factory.django
 import pytest
 from rgd.models.common import ChecksumFile
 
 from rdoasis.algorithms.models import Algorithm, AlgorithmTask
-from rdoasis.algorithms.tests.factories import DATA_DIR
 
 
 @pytest.mark.docker
