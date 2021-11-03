@@ -85,3 +85,11 @@ Useful sub-commands include:
 
 To automatically reformat all code to comply with
 some (but not all) of the style checks, run `tox -e format`.
+
+### Algorithms app task tests
+If you are writing or trying to run tests which fully utilize tasks (and docker) from the `algorithms` app, you'll need to do the following:
+
+1. Make sure `docker` is installed on your system.
+2. When writing the test, add the `@pytest.mark.docker` decorator to it.
+3. Perform the native setup outlined above, as since these tests use `docker`, they can't be run with the `docker-compose` setup.
+4. To run these tests, use the command `tox -e test-docker`.

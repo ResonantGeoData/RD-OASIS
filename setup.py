@@ -60,8 +60,8 @@ setup(
         # RGD
         'django-rgd[configuration]>=0.2.6.dev6',
         'django-rgd-imagery>=0.2.6.dev6',
-        'django-rgd-workflow',
     ],
+    dependency_links=['https://girder.github.io/large_image_wheels'],
     extras_require={
         'dev': [
             'django-composed-configuration[dev]',

@@ -5,12 +5,30 @@ from django.views.generic.base import RedirectView
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
+from rest_framework_extensions.routers import ExtendedSimpleRouter
+
+from rdoasis.algorithms.views.algorithms import (
+    AlgorithmTaskViewSet,
+    AlgorithmViewSet,
+    DockerImageViewSet,
+)
 
 # OpenAPI generation
 schema_view = get_schema_view(
     openapi.Info(title='RD-OASIS', default_version='v1', description=''),
     public=True,
     permission_classes=(permissions.AllowAny,),
+)
+
+
+router = ExtendedSimpleRouter()
+router.register('docker_images', DockerImageViewSet)
+algorithm_routes = router.register('algorithms', AlgorithmViewSet)
+algorithm_routes.register(
+    'tasks',
+    AlgorithmTaskViewSet,
+    basename='task',
+    parents_query_lookups=[f'algorithm__{AlgorithmViewSet.lookup_field}'],
 )
 
 urlpatterns = [
@@ -22,9 +40,9 @@ urlpatterns = [
     path('api/docs/swagger/', schema_view.with_ui('swagger'), name='docs-swagger'),
     path('', include('rgd.urls')),
     path('', include('rgd_imagery.urls')),
+    path('api/', include(router.urls)),
     # Redirect homepage to RGD core app homepage
     path(r'', RedirectView.as_view(url='rgd', permanent=False), name='index'),
-    path('', include('rgd_workflow.urls')),
 ]
 
 schema_view = get_schema_view(

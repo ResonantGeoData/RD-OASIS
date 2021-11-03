@@ -18,13 +18,9 @@ ENV PYTHONUNBUFFERED 1
 # but find_packages() will find nothing (which is fine). When Docker Compose mounts the real source
 # over top of this directory, the .egg-link in site-packages resolves to the mounted directory
 # and all package modules are importable.
-COPY ./django-rgd-workflow/setup.py /opt/django-project/django-rgd-workflow/setup.py
 COPY ./setup.py /opt/django-project/setup.py
 # Use a directory name which will never be an import name, as isort considers this as first-party.
 WORKDIR /opt/django-project
-RUN pip install \
-    --find-links https://girder.github.io/large_image_wheels \
-    -e django-rgd-workflow[dev]
 RUN pip install \
     --find-links https://girder.github.io/large_image_wheels \
     -e .[dev]

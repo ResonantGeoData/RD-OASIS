@@ -25,6 +25,7 @@ class RdoasisMixin(ResonantGeoDataBaseMixin, ConfigMixin):
         # Install local apps first, to ensure any overridden resources are found first
         configuration.INSTALLED_APPS = [
             'rdoasis.core.apps.CoreConfig',
+            'rdoasis.algorithms.apps.AlgorithmsConfig',
         ] + configuration.INSTALLED_APPS
 
         # Install additional apps
@@ -34,7 +35,6 @@ class RdoasisMixin(ResonantGeoDataBaseMixin, ConfigMixin):
             'django_cleanup.apps.CleanupConfig',
             'rgd',
             'rgd_imagery',
-            'rgd_workflow',
         ]
 
         configuration.REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'].append(
@@ -50,7 +50,6 @@ class DevelopmentConfiguration(RdoasisMixin, DevelopmentBaseConfiguration):
 
 class TestingConfiguration(RdoasisMixin, TestingBaseConfiguration):
     CELERY_TASK_ALWAYS_EAGER = True
-    CELERY_TASK_EAGER_PROPAGATES = True
 
 
 class ProductionConfiguration(RdoasisMixin, ProductionBaseConfiguration):
