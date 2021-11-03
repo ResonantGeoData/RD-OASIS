@@ -73,6 +73,9 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
 
     def get_queryset(self):
         """Override get_queryset to return steps from this workflow, in order."""
+        if getattr(self, 'swagger_fake_view', False):
+            return
+
         algorithm_pk = self.request.parser_context['kwargs']['parent_lookup_algorithm__pk']
         return AlgorithmTask.objects.filter(algorithm__pk=algorithm_pk)
 
