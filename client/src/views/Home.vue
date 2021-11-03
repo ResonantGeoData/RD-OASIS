@@ -28,6 +28,7 @@ export default defineComponent({
 
 <template>
   <v-app-bar app>
+    <v-app-bar-title>OASIS</v-app-bar-title>
     <v-spacer />
     <v-btn
       text
