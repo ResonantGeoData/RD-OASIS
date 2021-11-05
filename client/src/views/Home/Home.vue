@@ -5,8 +5,13 @@ import {
 import { axiosInstance } from '@/api';
 import { DockerImage, Algorithm, Task } from '@/types';
 
+import CreateAlgorithm from './components/CreateAlgorithm.vue';
+
 export default defineComponent({
   name: 'Home',
+  components: {
+    CreateAlgorithm,
+  },
   setup(props, ctx) {
     const router = ctx.root.$router;
     function viewAlgorithm(id: number) {
@@ -83,7 +88,24 @@ export default defineComponent({
           outlined
           style="height: 100%"
         >
-          <v-card-title>Algorithms</v-card-title>
+          <v-card-title>
+            Algorithms
+            <v-dialog width="50vw">
+              <template v-slot:activator="{ on }">
+                <v-btn
+                  icon
+                  right
+                  small
+                  v-on="on"
+                >
+                  <v-icon color="success">
+                    mdi-plus-circle
+                  </v-icon>
+                </v-btn>
+              </template>
+              <create-algorithm />
+            </v-dialog>
+          </v-card-title>
           <v-list dense>
             <v-list-item
               v-for="alg in algorithms"
