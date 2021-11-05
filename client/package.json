@@ -16,7 +16,7 @@
     "django-s3-file-field": "^0.2.0",
     "vue": "^2.6.11",
     "vue-router": "^3.2.0",
-    "vuetify": "^2.4.0"
+    "vuetify": "2.5.12"
   },
   "devDependencies": {
     "@types/jest": "^24.0.19",
