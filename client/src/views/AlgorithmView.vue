@@ -32,14 +32,19 @@ export default defineComponent({
   setup(props) {
     const algorithm = ref<Algorithm>();
     const tasks = ref<Task[]>([]);
+    const selectedTask = ref<Task | null>(null);
     onMounted(async () => {
       algorithm.value = (await axiosInstance.get(`algorithms/${props.id}/`)).data;
       tasks.value = (await axiosInstance.get(`algorithms/${props.id}/tasks/`)).data.results.sort(
         (a: Algorithm, b: Algorithm) => -a.created.localeCompare(b.created),
       );
+
+      // Set default to most recent, if there are any
+      if (tasks.value.length) {
+        [selectedTask.value] = tasks.value;
+      }
     });
 
-    const selectedTask = ref<Task | null>(null);
     const selectedTaskLogs = ref('');
     const selectedTaskFiles = ref<{}[]>([]);
     watchEffect(async () => {
@@ -84,22 +89,30 @@ export default defineComponent({
             </v-list-item-content>
           </v-list-item>
           <v-divider />
-
-          <v-list>
+          <v-list-item v-if="!tasks.length">
+            <v-list-item-content>
+              <v-list-item-subtitle>
+                This algorithm has no tasks...
+              </v-list-item-subtitle>
+            </v-list-item-content>
+          </v-list-item>
+          <v-list v-else>
             <v-list-item-group
               color="primary"
+              :value="tasks.indexOf(selectedTask)"
               @change="selectedTask = tasks[$event]"
             >
               <v-list-item
                 v-for="task in tasks"
                 :key="task.id"
               >
-                {{ task.id }}
+                Task ID: {{ task.id }}
               </v-list-item>
             </v-list-item-group>
           </v-list>
         </v-navigation-drawer>
       </v-col>
+
       <v-col class="pa-0">
         <v-row
           style="height: 100%"
