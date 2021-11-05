@@ -1,10 +1,12 @@
 <script lang="ts">
-import {
-  defineComponent, reactive, ref,
-} from '@vue/composition-api';
+import { computed, defineComponent, ref } from '@vue/composition-api';
+import VJsoneditor from 'v-jsoneditor';
 
 export default defineComponent({
   name: 'CreateAlgorithm',
+  components: {
+    VJsoneditor,
+  },
   setup() {
     const name = ref('');
     const command = ref('');
@@ -12,8 +14,24 @@ export default defineComponent({
     const gpu = ref(true);
     const dockerImage = ref<number | null>(null);
     const inputDataset = ref([] as number[]);
-    const environment = reactive({});
+    const environment = ref({});
+
+    const nonEmptyRule = (val: unknown) => (!!val || 'This field is required');
     const formValid = ref(false);
+    const customFormFieldsValid = computed(() => (
+      dockerImage.value !== null && inputDataset.value.length
+    ));
+    const allFieldsValid = computed(() => formValid.value && customFormFieldsValid.value);
+
+    function resetForm() {
+      name.value = '';
+      command.value = '';
+      entrypoint.value = null;
+      gpu.value = true;
+      dockerImage.value = null;
+      inputDataset.value = [];
+      environment.value = {};
+    }
 
     return {
       name,
@@ -23,7 +41,12 @@ export default defineComponent({
       dockerImage,
       inputDataset,
       environment,
+
+      // Form
+      nonEmptyRule,
       formValid,
+      allFieldsValid,
+      resetForm,
     };
   },
 });
@@ -31,7 +54,29 @@ export default defineComponent({
 
 <template>
   <v-card>
-    <v-card-title>Create a new algorithm</v-card-title>
+    <v-card-title>
+      Create a new algorithm
+      <v-spacer />
+      <v-btn
+        class="mx-1"
+        @click="resetForm"
+      >
+        Reset
+        <v-icon right>
+          mdi-jellyfish
+        </v-icon>
+      </v-btn>
+      <v-btn
+        class="mx-1"
+        color="success"
+        :disabled="!allFieldsValid"
+      >
+        Create
+        <v-icon right>
+          mdi-check
+        </v-icon>
+      </v-btn>
+    </v-card-title>
     <v-card-text>
       <v-form v-model="formValid">
         <v-card-subtitle class="pl-0 pb-0">
@@ -40,10 +85,12 @@ export default defineComponent({
         <v-text-field
           v-model="name"
           label="name"
+          :rules="[nonEmptyRule]"
         />
         <v-textarea
           v-model="command"
           label="Command"
+          :rules="[nonEmptyRule]"
         />
         <v-dialog width="60vw">
           <template v-slot:activator="{ on }">
@@ -95,11 +142,19 @@ export default defineComponent({
           v-model="entrypoint"
           label="Entrypoint"
         />
-        <v-textarea
+        <v-subheader
+          class="pl-0"
+          style="height: 30px"
+        >
+          Environment
+        </v-subheader>
+        <v-jsoneditor
           v-model="environment"
-          label="Environment"
+          :options="{mode: 'code', mainMenuBar: false}"
         />
       </v-form>
+
+      <!-- <v-btn>Create</v-btn> -->
     </v-card-text>
   </v-card>
 </template>
