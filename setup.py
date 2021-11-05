@@ -59,8 +59,8 @@ setup(
         'django-s3-file-field[boto3]',
         'gunicorn',
         # RGD
-        'django-rgd[configuration]>=0.2.6.dev6',
-        'django-rgd-imagery>=0.2.6.dev6',
+        'django-rgd[configuration]>=0.2.6.dev10',
+        'django-rgd-imagery>=0.2.6.dev10',
     ],
     dependency_links=['https://girder.github.io/large_image_wheels'],
     extras_require={
@@ -72,11 +72,11 @@ setup(
             'tox',
         ],
         'worker': [
-            'django-rgd-imagery[worker]>=0.2.6.dev6',
+            'django-rgd-imagery[worker]>=0.2.6.dev10',
             'docker',
         ],
         'fuse': [
-            'django-rgd[configuration,fuse]>=0.2.6.dev6',
+            'django-rgd[configuration,fuse]>=0.2.6.dev10',
         ],
     },
 )
