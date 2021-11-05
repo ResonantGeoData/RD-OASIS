@@ -5,6 +5,22 @@ import {
 import { axiosInstance } from '@/api';
 import { Algorithm, Task } from '@/types';
 
+const fileTableHeaders = [
+  {
+    text: 'Name',
+    align: 'start',
+    value: 'name',
+  },
+  {
+    text: 'Type (File/Url)',
+    value: 'type',
+  },
+  {
+    text: 'Download Url',
+    value: 'download_url',
+  },
+];
+
 export default defineComponent({
   name: 'AlgorithmView',
   props: {
@@ -37,6 +53,7 @@ export default defineComponent({
     });
 
     return {
+      fileTableHeaders,
       algorithm,
       tasks,
       selectedTask,
@@ -95,8 +112,33 @@ export default defineComponent({
             >
               <v-card-title>Task Output Files</v-card-title>
               <v-divider />
-              <v-card-text>
-                asd
+              <v-card-text style="height: 100%">
+                <v-data-table
+                  :headers="fileTableHeaders"
+                  :items="selectedTaskFiles"
+                  item-key="id"
+                  height="100%"
+                >
+                  <!-- eslint-disable-next-line vue/valid-v-slot -->
+                  <template v-slot:item.type="{ item }">
+                    {{ item.type === 1 ? 'File' : 'Url' }}
+                  </template>
+                  <!-- eslint-disable-next-line vue/valid-v-slot -->
+                  <template v-slot:item.download_url="{ item }">
+                    <a
+                      :href="item.download_url"
+                      target="_blank"
+                    >
+                      <span>Download</span>
+                    </a>
+                    <v-icon
+                      small
+                      class="mb-1"
+                    >
+                      mdi-open-in-new
+                    </v-icon>
+                  </template>
+                </v-data-table>
               </v-card-text>
             </v-sheet>
           </v-col>

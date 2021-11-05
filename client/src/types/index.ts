@@ -31,3 +31,19 @@ export interface Task extends Model {
   status: 'created' | 'queued' | 'running' | 'failed' | 'success';
   algorithm: number;
 }
+
+export interface ChecksumFile extends Model {
+  name: string;
+  description: string | null;
+  status: 'created' | 'queued' | 'running' | 'failed' | 'success' | 'skipped';
+  file: string;
+  url: string;
+  download_url: string;
+  type: 1 | 2;
+  failure_reason: string | null;
+  checksum: string;
+  validate_checksum: boolean;
+  last_validation: boolean;
+  collection: number | null;
+  created_by: number | null;
+}
