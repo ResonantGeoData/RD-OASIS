@@ -2,6 +2,8 @@
 import {
   defineComponent, ref, watchEffect, onMounted, computed,
 } from '@vue/composition-api';
+import VJsoneditor from 'v-jsoneditor';
+
 import { axiosInstance } from '@/api';
 import { Algorithm, ChecksumFile, Task } from '@/types';
 
@@ -23,6 +25,9 @@ const fileTableHeaders = [
 
 export default defineComponent({
   name: 'AlgorithmView',
+  components: {
+    VJsoneditor,
+  },
   props: {
     id: {
       type: String,
@@ -30,13 +35,42 @@ export default defineComponent({
     },
   },
   setup(props) {
+    // /////////////////
+    // Algorithm
+    // /////////////////
     const algorithm = ref<Algorithm>();
-    function fetchAlgorithm() {
-      axiosInstance.get(`algorithms/${props.id}/`).then((res) => {
+    const showAlgorithmDetails = ref(false);
+    const fetchingAlgorithm = ref(false);
+
+    async function fetchAlgorithm() {
+      fetchingAlgorithm.value = true;
+
+      try {
+        const res = await axiosInstance.get(`algorithms/${props.id}/`);
         algorithm.value = res.data;
-      });
+      } catch (error) {
+        // TODO: Handle
+      }
+
+      fetchingAlgorithm.value = false;
     }
 
+    async function saveAlgorithm() {
+      fetchingAlgorithm.value = true;
+
+      try {
+        const res = await axiosInstance.put(`algorithms/${props.id}/`, algorithm.value);
+        algorithm.value = res.data;
+      } catch (error) {
+        // TODO: Handle
+      }
+
+      fetchingAlgorithm.value = false;
+    }
+
+    // /////////////////
+    // Tasks
+    // /////////////////
     const tasks = ref<Task[]>([]);
     const selectedTaskIndex = ref<number | null>(null);
     const selectedTask = computed(() => (
@@ -55,19 +89,6 @@ export default defineComponent({
         }
       });
     }
-
-    const inputDataset = ref<ChecksumFile[]>([]);
-    function fetchInputDataset() {
-      axiosInstance.get(`algorithms/${props.id}/input/`).then((res) => {
-        inputDataset.value = res.data.results;
-      });
-    }
-
-    onMounted(() => {
-      fetchAlgorithm();
-      fetchTasks();
-      fetchInputDataset();
-    });
 
     const selectedTaskLogs = ref('');
     const selectedTaskFiles = ref<{}[]>([]);
@@ -104,9 +125,29 @@ export default defineComponent({
       }
     };
 
+    // /////////////////
+    // Input Dataset
+    // /////////////////
+    const inputDataset = ref<ChecksumFile[]>([]);
+    function fetchInputDataset() {
+      axiosInstance.get(`algorithms/${props.id}/input/`).then((res) => {
+        inputDataset.value = res.data.results;
+      });
+    }
+
+    onMounted(() => {
+      fetchAlgorithm();
+      fetchTasks();
+      fetchInputDataset();
+    });
+
     return {
       fileTableHeaders,
       algorithm,
+      showAlgorithmDetails,
+      fetchingAlgorithm,
+      fetchAlgorithm,
+      saveAlgorithm,
       inputDataset,
       tasks,
       taskStatusIconStyle,
@@ -128,17 +169,66 @@ export default defineComponent({
   >
     <v-row no-gutters>
       <v-col class="pa-0">
-        <v-toolbar>
+        <v-toolbar extension-height="400">
           <v-progress-circular
             v-if="!algorithm"
             indeterminate
           />
-          <v-toolbar-title v-else>
-            Algorithm {{ algorithm.id }}
-            <template v-if="algorithm.name">
-              ({{ algorithm.name }}) on Image
-            </template>
-          </v-toolbar-title>
+          <template v-else>
+            <v-btn
+              icon
+              left
+              @click="showAlgorithmDetails = !showAlgorithmDetails"
+            >
+              <v-icon v-if="showAlgorithmDetails">
+                mdi-chevron-down
+              </v-icon>
+              <v-icon v-else>
+                mdi-chevron-right
+              </v-icon>
+            </v-btn>
+            <v-toolbar-title>
+              Algorithm {{ algorithm.id }}
+              <template v-if="algorithm.name">
+                ({{ algorithm.name }})
+              </template>
+            </v-toolbar-title>
+          </template>
+          <template
+            v-if="showAlgorithmDetails"
+            v-slot:extension
+          >
+            <v-card
+              flat
+              width="100%"
+            >
+              <v-card-text>
+                <v-jsoneditor
+                  v-model="algorithm"
+                  :options="{mode: 'code', mainMenuBar: false}"
+                  style="height: 300px;"
+                />
+              </v-card-text>
+              <v-card-actions>
+                <v-btn
+                  :loading="fetchingAlgorithm"
+                  @click="fetchAlgorithm"
+                >
+                  Reset
+                </v-btn>
+                <v-btn
+                  color="primary"
+                  :loading="fetchingAlgorithm"
+                  @click="saveAlgorithm"
+                >
+                  <v-icon left>
+                    mdi-content-save
+                  </v-icon>
+                  Save
+                </v-btn>
+              </v-card-actions>
+            </v-card>
+          </template>
         </v-toolbar>
       </v-col>
     </v-row>
