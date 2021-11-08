@@ -122,6 +122,10 @@ export default defineComponent({
                 <v-card-text>
                   Command: "{{ alg.command }}"<br>
                   Uses GPU: {{ alg.gpu }}<br>
+
+                  <!-- TODO: Num files -->
+                  <!-- TODO: Num tasks -->
+                  <!-- TODO: Currently running tasks (bool) -->
                 </v-card-text>
               </v-card>
             </v-list-item>
