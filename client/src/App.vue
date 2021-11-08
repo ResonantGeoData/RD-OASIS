@@ -3,7 +3,14 @@ import { computed, defineComponent } from '@vue/composition-api';
 import { oauthClient } from '@/api';
 
 export default defineComponent({
-  setup() {
+  setup(props, ctx) {
+    const router = ctx.root.$router;
+    function navigateHome() {
+      if (router.currentRoute.path !== '/') {
+        router.push('/');
+      }
+    }
+
     const loginText = computed(() => (oauthClient.isLoggedIn ? 'Logout' : 'Login'));
     const logInOrOut = () => {
       if (oauthClient.isLoggedIn) {
@@ -16,6 +23,7 @@ export default defineComponent({
     return {
       loginText,
       logInOrOut,
+      navigateHome,
     };
   },
 });
@@ -25,7 +33,18 @@ export default defineComponent({
   <v-app>
     <!-- For some reason, flex-grow-0 is needed or the app-bar is huge -->
     <v-app-bar class="flex-grow-0">
-      <v-app-bar-title>OASIS</v-app-bar-title>
+      <v-row
+        align="center"
+        style="cursor: pointer;"
+        @click="navigateHome"
+      >
+        <v-avatar tile>
+          <img src="../public/icon_large.png">
+        </v-avatar>
+        <span class="ml-2 text-h4 font-weight-regular">
+          OASIS
+        </span>
+      </v-row>
       <v-spacer />
       <v-btn
         text

@@ -69,6 +69,7 @@ export default defineComponent({
             <v-list-item
               v-for="image in dockerImages"
               :key="image.id"
+              class="my-2"
             >
               <v-card width="100%">
                 <v-card-title>{{ image.name }}</v-card-title>

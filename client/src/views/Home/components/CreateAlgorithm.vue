@@ -1,5 +1,10 @@
 <script lang="ts">
-import { computed, defineComponent, ref } from '@vue/composition-api';
+import { axiosInstance } from '@/api';
+import { ChecksumFile, DockerImage } from '@/types';
+import {
+  computed, defineComponent, onMounted, ref,
+} from '@vue/composition-api';
+import axios from 'axios';
 import VJsoneditor from 'v-jsoneditor';
 
 export default defineComponent({
@@ -7,13 +12,15 @@ export default defineComponent({
   components: {
     VJsoneditor,
   },
-  setup() {
+  setup(props, ctx) {
+    const router = ctx.root.$router;
+
     const name = ref('');
     const command = ref('');
     const entrypoint = ref<string | null>(null);
     const gpu = ref(true);
-    const dockerImage = ref<number | null>(null);
-    const inputDataset = ref([] as number[]);
+    const dockerImage = ref<DockerImage | null>(null);
+    const inputDataset = ref([] as ChecksumFile[]);
     const environment = ref({});
 
     const nonEmptyRule = (val: unknown) => (!!val || 'This field is required');
@@ -22,6 +29,21 @@ export default defineComponent({
       dockerImage.value !== null && inputDataset.value.length
     ));
     const allFieldsValid = computed(() => formValid.value && customFormFieldsValid.value);
+
+    const dockerImageHeaders = [{ text: 'Name', value: 'name' }, { text: 'Image ID', value: 'image_id' }];
+    const dockerImageList = ref<DockerImage[]>([]);
+
+    const fileListHeaders = [{ text: 'Name', value: 'name' }, { text: 'Type (File/Url)', value: 'type' }];
+    const fileList = ref<ChecksumFile[]>([]);
+    onMounted(async () => {
+      // TODO: Deal with server pagination
+      const dockerImageRes = await axiosInstance.get('docker_images/');
+      dockerImageList.value = dockerImageRes.data.results;
+
+      // TODO: Deal with server pagination
+      const fileRes = await axiosInstance.get('rgd/checksum_file');
+      fileList.value = fileRes.data.results;
+    });
 
     function resetForm() {
       name.value = '';
@@ -33,6 +55,27 @@ export default defineComponent({
       environment.value = {};
     }
 
+    async function createAlgorithm() {
+      if (dockerImage.value === null || !inputDataset.value.length) {
+        throw new Error('Attempted to create algorithm with empty docker image or dataset!');
+      }
+
+      const body = {
+        name: name.value,
+        command: command.value,
+        entrypoint: entrypoint.value,
+        gpu: gpu.value,
+        docker_image: dockerImage.value.id,
+        input_dataset: inputDataset.value.map((f) => f.id),
+        environment: environment.value,
+      };
+
+      const res = await axiosInstance.post('algorithms/', body);
+      if (res.status === 201) {
+        router.push({ name: 'algorithm', params: { id: res.data.id.toString() } });
+      }
+    }
+
     return {
       name,
       command,
@@ -41,6 +84,11 @@ export default defineComponent({
       dockerImage,
       inputDataset,
       environment,
+      dockerImageHeaders,
+      dockerImageList,
+      fileListHeaders,
+      fileList,
+      createAlgorithm,
 
       // Form
       nonEmptyRule,
@@ -70,6 +118,7 @@ export default defineComponent({
         class="mx-1"
         color="success"
         :disabled="!allFieldsValid"
+        @click="createAlgorithm"
       >
         Create
         <v-icon right>
@@ -97,6 +146,7 @@ export default defineComponent({
             <v-btn
               color="primary"
               class="mx-1"
+              :outlined="!dockerImage"
               v-on="on"
             >
               Select Docker Image
@@ -105,10 +155,15 @@ export default defineComponent({
               </v-icon>
             </v-btn>
           </template>
-          <!-- TODO: Finish-->
           <v-data-table
-            :items="[1, 2, 3]"
-            title="asd"
+            title="Docker Images"
+            :items="dockerImageList"
+            :headers="dockerImageHeaders"
+            single-select
+            selectable-key="id"
+            show-select
+            :value="dockerImage ? [dockerImage] : []"
+            @input="dockerImage = $event[0] || null"
           />
         </v-dialog>
         <v-dialog width="60vw">
@@ -116,6 +171,7 @@ export default defineComponent({
             <v-btn
               color="primary"
               class="mx-1"
+              :outlined="!inputDataset.length"
               v-on="on"
             >
               Select Input Data
@@ -124,12 +180,18 @@ export default defineComponent({
               </v-icon>
             </v-btn>
           </template>
-          <!-- TODO: Finish-->
           <v-data-table
-            :items="[1, 2, 3]"
-            title="asd"
+            v-model="inputDataset"
+            title="Files"
+            :items="fileList"
+            :headers="fileListHeaders"
+            selectable-key="id"
+            show-select
           />
         </v-dialog>
+        <template v-if="inputDataset.length">
+          ({{ inputDataset.length }} selected)
+        </template>
 
         <v-card-subtitle class="pl-0 pb-0">
           Optional Fields
