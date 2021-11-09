@@ -9,12 +9,13 @@ from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from rest_framework_extensions.mixins import NestedViewSetMixin
 from rgd.serializers import ChecksumFileSerializer
 
-from rdoasis.algorithms.models import Algorithm, AlgorithmTask, DockerImage
+from rdoasis.algorithms.models import Algorithm, AlgorithmTask, Dataset, DockerImage
 
 from .serializers import (
     AlgorithmSerializer,
     AlgorithmTaskLogsSerializer,
     AlgorithmTaskSerializer,
+    DatasetSerializer,
     DockerImageSerializer,
     LimitOffsetSerializer,
 )
@@ -47,6 +48,12 @@ class AlgorithmViewSet(ModelViewSet):
         algorithm_task = alg.run()
 
         return Response(AlgorithmTaskSerializer(algorithm_task).data)
+
+
+class DatasetViewSet(ModelViewSet):
+    queryset = Dataset.objects.all()
+    serializer_class = DatasetSerializer
+    pagination_class = LimitOffsetPagination
 
 
 class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):

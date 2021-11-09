@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from rdoasis.algorithms.models import Algorithm, AlgorithmTask, DockerImage
+from rdoasis.algorithms.models import Algorithm, AlgorithmTask, Dataset, DockerImage
 
 
 class LimitOffsetSerializer(serializers.Serializer):
@@ -22,6 +22,13 @@ class AlgorithmSerializer(serializers.ModelSerializer):
 
     # Restrict JSONField to DictField with string values
     environment = serializers.DictField(child=serializers.CharField())
+
+
+class DatasetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Dataset
+        fields = '__all__'
+        read_only_fields = ['created', 'modified']
 
 
 class AlgorithmTaskSerializer(serializers.ModelSerializer):
