@@ -1,16 +1,18 @@
 <script lang="ts">
-import { axiosInstance } from '@/api';
-import { ChecksumFile, DockerImage } from '@/types';
 import {
   computed, defineComponent, onMounted, ref,
 } from '@vue/composition-api';
-import axios from 'axios';
 import VJsoneditor from 'v-jsoneditor';
+
+import { axiosInstance } from '@/api';
+import { ChecksumFile, DockerImage } from '@/types';
+import UploadDialog from '@/components/UploadDialog.vue';
 
 export default defineComponent({
   name: 'CreateAlgorithm',
   components: {
     VJsoneditor,
+    UploadDialog,
   },
   setup(props, ctx) {
     const router = ctx.root.$router;
@@ -32,17 +34,39 @@ export default defineComponent({
 
     const dockerImageHeaders = [{ text: 'Name', value: 'name' }, { text: 'Image ID', value: 'image_id' }];
     const dockerImageList = ref<DockerImage[]>([]);
-
-    const fileListHeaders = [{ text: 'Name', value: 'name' }, { text: 'Type (File/Url)', value: 'type' }];
-    const fileList = ref<ChecksumFile[]>([]);
-    onMounted(async () => {
+    async function fetchDockerImageList() {
       // TODO: Deal with server pagination
       const dockerImageRes = await axiosInstance.get('docker_images/');
       dockerImageList.value = dockerImageRes.data.results;
+    }
 
-      // TODO: Deal with server pagination
-      const fileRes = await axiosInstance.get('rgd/checksum_file');
-      fileList.value = fileRes.data.results;
+    const uploadDialogOpen = ref(false);
+    const fileListLoading = ref(false);
+    const fileListHeaders = [{ text: 'Name', value: 'name' }, { text: 'Type (File/Url)', value: 'type' }];
+    const fileList = ref<ChecksumFile[]>([]);
+    async function fetchFileList() {
+      fileListLoading.value = true;
+
+      try {
+        // TODO: Deal with server pagination
+        const fileRes = await axiosInstance.get('rgd/checksum_file');
+        fileList.value = fileRes.data.results;
+      } catch (error) {
+        // TODO: Handle
+      }
+
+      fileListLoading.value = false;
+    }
+
+    async function inputDataUploaded() {
+      uploadDialogOpen.value = false;
+      fetchFileList();
+    }
+
+    // Intialize on mount
+    onMounted(async () => {
+      fetchDockerImageList();
+      fetchFileList();
     });
 
     function resetForm() {
@@ -65,7 +89,9 @@ export default defineComponent({
         command: command.value,
         entrypoint: entrypoint.value,
         gpu: gpu.value,
+        // eslint-disable-next-line @typescript-eslint/camelcase
         docker_image: dockerImage.value.id,
+        // eslint-disable-next-line @typescript-eslint/camelcase
         input_dataset: inputDataset.value.map((f) => f.id),
         environment: environment.value,
       };
@@ -83,11 +109,14 @@ export default defineComponent({
       gpu,
       dockerImage,
       inputDataset,
+      uploadDialogOpen,
+      inputDataUploaded,
       environment,
       dockerImageHeaders,
       dockerImageList,
       fileListHeaders,
       fileList,
+      fileListLoading,
       createAlgorithm,
 
       // Form
@@ -122,7 +151,7 @@ export default defineComponent({
       >
         Create
         <v-icon right>
-          mdi-check
+          mdi-plus
         </v-icon>
       </v-btn>
     </v-card-title>
@@ -180,14 +209,41 @@ export default defineComponent({
               </v-icon>
             </v-btn>
           </template>
-          <v-data-table
-            v-model="inputDataset"
-            title="Files"
-            :items="fileList"
-            :headers="fileListHeaders"
-            selectable-key="id"
-            show-select
-          />
+          <v-card>
+            <v-card-title>
+              Input Dataset
+              <v-dialog
+                v-model="uploadDialogOpen"
+                width="50vw"
+              >
+                <template v-slot:activator="{ on: dialog }">
+                  <v-tooltip right>
+                    <template v-slot:activator="{ on: tooltip }">
+                      <v-btn
+                        icon
+                        right
+                        v-on="{...dialog, ...tooltip}"
+                      >
+                        <v-icon>mdi-upload</v-icon>
+                      </v-btn>
+                    </template>
+
+                    Upload new input data
+                  </v-tooltip>
+                </template>
+                <upload-dialog @complete="inputDataUploaded" />
+              </v-dialog>
+            </v-card-title>
+            <v-data-table
+              v-model="inputDataset"
+              :loading="fileListLoading"
+              title="Files"
+              :items="fileList"
+              :headers="fileListHeaders"
+              selectable-key="id"
+              show-select
+            />
+          </v-card>
         </v-dialog>
         <template v-if="inputDataset.length">
           ({{ inputDataset.length }} selected)
