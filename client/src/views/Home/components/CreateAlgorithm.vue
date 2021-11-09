@@ -17,6 +17,7 @@ export default defineComponent({
   setup(props, ctx) {
     const router = ctx.root.$router;
 
+    // Form data
     const name = ref('');
     const command = ref('');
     const entrypoint = ref<string | null>(null);
@@ -25,6 +26,7 @@ export default defineComponent({
     const inputDataset = ref([] as ChecksumFile[]);
     const environment = ref({});
 
+    // Form validation
     const nonEmptyRule = (val: unknown) => (!!val || 'This field is required');
     const formValid = ref(false);
     const customFormFieldsValid = computed(() => (
@@ -32,6 +34,7 @@ export default defineComponent({
     ));
     const allFieldsValid = computed(() => formValid.value && customFormFieldsValid.value);
 
+    // Docker images
     const dockerImageHeaders = [{ text: 'Name', value: 'name' }, { text: 'Image ID', value: 'image_id' }];
     const dockerImageList = ref<DockerImage[]>([]);
     async function fetchDockerImageList() {
@@ -40,7 +43,9 @@ export default defineComponent({
       dockerImageList.value = dockerImageRes.data.results;
     }
 
+    // Files
     const uploadDialogOpen = ref(false);
+    const inputDatasetDialogOpen = ref(false);
     const fileListLoading = ref(false);
     const fileListHeaders = [{ text: 'Name', value: 'name' }, { text: 'Type (File/Url)', value: 'type' }];
     const fileList = ref<ChecksumFile[]>([]);
@@ -109,6 +114,7 @@ export default defineComponent({
       gpu,
       dockerImage,
       inputDataset,
+      inputDatasetDialogOpen,
       uploadDialogOpen,
       inputDataUploaded,
       environment,
@@ -184,18 +190,24 @@ export default defineComponent({
               </v-icon>
             </v-btn>
           </template>
-          <v-data-table
-            title="Docker Images"
-            :items="dockerImageList"
-            :headers="dockerImageHeaders"
-            single-select
-            selectable-key="id"
-            show-select
-            :value="dockerImage ? [dockerImage] : []"
-            @input="dockerImage = $event[0] || null"
-          />
+          <v-card>
+            <v-card-title>Docker Image (select one)</v-card-title>
+            <v-data-table
+              title="Docker Images"
+              :items="dockerImageList"
+              :headers="dockerImageHeaders"
+              single-select
+              selectable-key="id"
+              show-select
+              :value="dockerImage ? [dockerImage] : []"
+              @input="dockerImage = $event[0] || null"
+            />
+          </v-card>
         </v-dialog>
-        <v-dialog width="60vw">
+        <v-dialog
+          v-model="inputDatasetDialogOpen"
+          width="60vw"
+        >
           <template v-slot:activator="{ on }">
             <v-btn
               color="primary"
@@ -222,9 +234,10 @@ export default defineComponent({
                       <v-btn
                         icon
                         right
+                        color="primary"
                         v-on="{...dialog, ...tooltip}"
                       >
-                        <v-icon>mdi-upload</v-icon>
+                        <v-icon>mdi-plus-circle</v-icon>
                       </v-btn>
                     </template>
 
@@ -233,6 +246,14 @@ export default defineComponent({
                 </template>
                 <upload-dialog @complete="inputDataUploaded" />
               </v-dialog>
+              <v-spacer />
+              <v-btn
+                color="secondary"
+                flat
+                @click="inputDatasetDialogOpen = false"
+              >
+                Close
+              </v-btn>
             </v-card-title>
             <v-data-table
               v-model="inputDataset"

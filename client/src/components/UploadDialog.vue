@@ -13,10 +13,10 @@ export default defineComponent({
     const uploading = ref(false);
     async function upload() {
       uploading.value = true;
-      await uploadFiles(files.value);
+      const uploadedFiles = await uploadFiles(files.value);
       uploading.value = false;
 
-      ctx.emit('complete');
+      ctx.emit('complete', uploadedFiles);
     }
 
     return {

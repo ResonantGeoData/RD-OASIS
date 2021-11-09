@@ -6,6 +6,7 @@ import VJsoneditor from 'v-jsoneditor';
 
 import { axiosInstance } from '@/api';
 import { Algorithm, ChecksumFile, Task } from '@/types';
+import UploadDialog from '@/components/UploadDialog.vue';
 
 const fileTableHeaders = [
   {
@@ -27,6 +28,7 @@ export default defineComponent({
   name: 'AlgorithmView',
   components: {
     VJsoneditor,
+    UploadDialog,
   },
   props: {
     id: {
@@ -128,11 +130,41 @@ export default defineComponent({
     // /////////////////
     // Input Dataset
     // /////////////////
+    const uploadDialogOpen = ref(false);
     const inputDataset = ref<ChecksumFile[]>([]);
-    function fetchInputDataset() {
-      axiosInstance.get(`algorithms/${props.id}/input/`).then((res) => {
+    const fetchingInputDataset = ref(false);
+    async function fetchInputDataset() {
+      fetchingInputDataset.value = true;
+      try {
+        const res = await axiosInstance.get(`algorithms/${props.id}/input/`);
         inputDataset.value = res.data.results;
-      });
+      } catch (error) {
+        // TODO: Handle
+      }
+
+      fetchingInputDataset.value = false;
+    }
+
+    async function addFilesToInputDataset(files: ChecksumFile[]) {
+      if (algorithm.value === undefined) {
+        throw new Error('Algorithm is undefined!');
+      }
+
+      // eslint-disable-next-line @typescript-eslint/camelcase
+      algorithm.value.input_dataset = algorithm.value.input_dataset.concat(files.map((f) => f.id));
+      saveAlgorithm();
+    }
+
+    async function handleUploadComplete(files: ChecksumFile[]) {
+      uploadDialogOpen.value = false;
+      await addFilesToInputDataset(files);
+
+      // Slightly wait to ensure response is valid
+      fetchingInputDataset.value = true;
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Fetch new input data
+      await fetchInputDataset();
     }
 
     onMounted(() => {
@@ -148,7 +180,10 @@ export default defineComponent({
       fetchingAlgorithm,
       fetchAlgorithm,
       saveAlgorithm,
+      uploadDialogOpen,
       inputDataset,
+      fetchingInputDataset,
+      handleUploadComplete,
       tasks,
       taskStatusIconStyle,
       selectedTask,
@@ -296,11 +331,30 @@ export default defineComponent({
         <v-row no-gutters>
           <v-col>
             <v-sheet>
-              <v-card-title>Input Dataset</v-card-title>
+              <v-card-title>
+                Input Dataset
+                <v-dialog
+                  v-model="uploadDialogOpen"
+                  width="50vw"
+                >
+                  <template v-slot:activator="{ on }">
+                    <v-btn
+                      icon
+                      right
+                      color="primary"
+                      v-on="on"
+                    >
+                      <v-icon>mdi-plus-circle</v-icon>
+                    </v-btn>
+                  </template>
+                  <upload-dialog @complete="handleUploadComplete" />
+                </v-dialog>
+              </v-card-title>
               <v-divider />
               <v-data-table
                 :headers="fileTableHeaders"
                 :items="inputDataset"
+                :loading="fetchingInputDataset"
               >
                 <!-- eslint-disable-next-line vue/valid-v-slot -->
                 <template v-slot:item.type="{ item }">
