@@ -25,13 +25,8 @@ schema_view = get_schema_view(
 router = ExtendedSimpleRouter()
 router.register('docker_images', DockerImageViewSet)
 router.register('datasets', DatasetViewSet)
-algorithm_routes = router.register('algorithms', AlgorithmViewSet)
-algorithm_routes.register(
-    'tasks',
-    AlgorithmTaskViewSet,
-    basename='task',
-    parents_query_lookups=[f'algorithm__{AlgorithmViewSet.lookup_field}'],
-)
+router.register('algorithms', AlgorithmViewSet)
+router.register('algorithm_tasks', AlgorithmTaskViewSet, basename='task')
 
 urlpatterns = [
     path('accounts/', include('allauth.urls')),

@@ -37,6 +37,10 @@ class AlgorithmTaskSerializer(serializers.ModelSerializer):
         exclude = ['output_log']
 
 
+class AlgorithmTaskQuerySerializer(serializers.Serializer):
+    algorithm_pk = serializers.IntegerField(required=False)
+
+
 class AlgorithmTaskLogsSerializer(serializers.Serializer):
     """A serializer for the log action query params."""
 

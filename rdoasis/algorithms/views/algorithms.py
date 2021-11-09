@@ -14,6 +14,7 @@ from rdoasis.algorithms.models import Algorithm, AlgorithmTask, Dataset, DockerI
 from .serializers import (
     AlgorithmSerializer,
     AlgorithmTaskLogsSerializer,
+    AlgorithmTaskQuerySerializer,
     AlgorithmTaskSerializer,
     DatasetSerializer,
     DockerImageSerializer,
@@ -49,6 +50,18 @@ class AlgorithmViewSet(ModelViewSet):
 
         return Response(AlgorithmTaskSerializer(algorithm_task).data)
 
+    @swagger_auto_schema(query_serializer=LimitOffsetSerializer())
+    @action(detail=True, methods=['GET'])
+    def tasks(self, request, pk):
+        queryset = AlgorithmTask.objects.filter(algorithm__pk=pk)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = AlgorithmTaskSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = AlgorithmTaskSerializer(queryset, many=True)
+        return Response(serializer.data)
+
 
 class DatasetViewSet(ModelViewSet):
     queryset = Dataset.objects.all()
@@ -61,23 +74,28 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
     pagination_class = LimitOffsetPagination
 
     def get_queryset(self):
-        """Override get_queryset to return steps from this workflow, in order."""
         if getattr(self, 'swagger_fake_view', False):
             return
 
-        algorithm_pk = self.request.parser_context['kwargs']['parent_lookup_algorithm__pk']
-        return AlgorithmTask.objects.filter(algorithm__pk=algorithm_pk)
+        queryset = AlgorithmTask.objects.all()
+        algorithm_pk = self.request.GET.get('algorithm_pk', None)
+        if algorithm_pk is not None:
+            queryset = queryset.filter(algorithm__pk=algorithm_pk)
+
+        return queryset
+
+    @swagger_auto_schema(query_serializer=AlgorithmTaskQuerySerializer())
+    def list(self, *args, **kwargs):
+        return super().list(*args, **kwargs)
 
     @swagger_auto_schema(
         query_serializer=AlgorithmTaskLogsSerializer(), responses={200: 'The log text.'}
     )
     @action(detail=True, methods=['GET'], renderer_classes=[PlainTextRenderer])
-    def logs(self, request, parent_lookup_algorithm__pk: str, pk: str):
+    def logs(self, request, pk: str):
         """Return the task logs."""
         # Fetch task
-        task: AlgorithmTask = get_object_or_404(
-            AlgorithmTask, algorithm__pk=parent_lookup_algorithm__pk, pk=pk
-        )
+        task: AlgorithmTask = get_object_or_404(AlgorithmTask, pk=pk)
 
         # Grab params
         serializer = AlgorithmTaskLogsSerializer(data=request.query_params)
@@ -98,7 +116,7 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
         query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
     )
     @action(detail=True, methods=['GET'])
-    def input(self, request, parent_lookup_algorithm__pk: str, pk: str):
+    def input(self, request, pk: str):
         """Return the input dataset as a list of files."""
         task: AlgorithmTask = get_object_or_404(AlgorithmTask, pk=pk)
         queryset = task.input_dataset.files.all()
@@ -116,12 +134,11 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
         query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
     )
     @action(detail=True, methods=['GET'])
-    def output(self, request, parent_lookup_algorithm__pk: str, pk: str):
+    def output(self, request, pk: str):
         """Return the task output dataset as a list of files."""
-        task: AlgorithmTask = get_object_or_404(
-            AlgorithmTask, algorithm__pk=parent_lookup_algorithm__pk, pk=pk
-        )
-        queryset = task.output_dataset.files.all()
+        task: AlgorithmTask = get_object_or_404(AlgorithmTask, pk=pk)
+        output_dataset = task.output_dataset
+        queryset = output_dataset.files.all() if output_dataset is not None else []
 
         # Paginate
         page = self.paginate_queryset(queryset)
