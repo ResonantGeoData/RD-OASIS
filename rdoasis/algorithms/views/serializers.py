@@ -27,7 +27,7 @@ class AlgorithmSerializer(serializers.ModelSerializer):
 class AlgorithmTaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = AlgorithmTask
-        exclude = ['output_log', 'output_dataset']
+        exclude = ['output_log']
 
 
 class AlgorithmTaskLogsSerializer(serializers.Serializer):

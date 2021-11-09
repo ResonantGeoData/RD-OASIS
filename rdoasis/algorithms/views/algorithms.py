@@ -48,24 +48,6 @@ class AlgorithmViewSet(ModelViewSet):
 
         return Response(AlgorithmTaskSerializer(algorithm_task).data)
 
-    @swagger_auto_schema(
-        query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
-    )
-    @action(detail=True, methods=['GET'])
-    def input(self, request, pk: str):
-        """Return the input dataset as a list of files."""
-        alg: Algorithm = get_object_or_404(Algorithm, pk=pk)
-        queryset = alg.input_dataset.all()
-
-        # Paginate
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = ChecksumFileSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = ChecksumFileSerializer(queryset, many=True)
-        return Response(serializer.data)
-
 
 class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
     serializer_class = AlgorithmTaskSerializer
@@ -109,12 +91,30 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
         query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
     )
     @action(detail=True, methods=['GET'])
+    def input(self, request, parent_lookup_algorithm__pk: str, pk: str):
+        """Return the input dataset as a list of files."""
+        task: AlgorithmTask = get_object_or_404(AlgorithmTask, pk=pk)
+        queryset = task.input_dataset.files.all()
+
+        # Paginate
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = ChecksumFileSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = ChecksumFileSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @swagger_auto_schema(
+        query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
+    )
+    @action(detail=True, methods=['GET'])
     def output(self, request, parent_lookup_algorithm__pk: str, pk: str):
         """Return the task output dataset as a list of files."""
         task: AlgorithmTask = get_object_or_404(
             AlgorithmTask, algorithm__pk=parent_lookup_algorithm__pk, pk=pk
         )
-        queryset = task.output_dataset.all()
+        queryset = task.output_dataset.files.all()
 
         # Paginate
         page = self.paginate_queryset(queryset)

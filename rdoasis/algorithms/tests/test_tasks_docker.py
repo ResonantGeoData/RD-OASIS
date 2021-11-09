@@ -23,7 +23,7 @@ def test_successful_task(algorithm_factory, docker_image_factory, checksum_file_
     assert task.status == AlgorithmTask.Status.SUCCEEDED
     assert task.output_log == 'HI\n'
 
-    files: List[ChecksumFile] = list(task.output_dataset.all())
+    files: List[ChecksumFile] = list(task.output_dataset.files.all())
     assert len(files) == 1
     assert files[0].name == 'hello.txt'
 
@@ -46,7 +46,7 @@ def test_failed_task(algorithm_factory, docker_image_factory, checksum_file_fact
 
     # Make assertions
     assert task.status == AlgorithmTask.Status.FAILED
-    assert task.output_dataset.all().count() == 0
+    assert task.output_dataset is None
 
     # Assert output log isn't empty
     assert task.output_log

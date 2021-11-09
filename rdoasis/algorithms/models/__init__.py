@@ -32,6 +32,13 @@ class DockerImage(TimeStampedModel):
         ]
 
 
+class Dataset(TimeStampedModel):
+    """A collection of multiple ChecksumFiles."""
+
+    name = models.CharField(max_length=256, unique=True)
+    files = models.ManyToManyField(ChecksumFile, blank=True, related_name='datasets')
+
+
 class AlgorithmTask(TimeStampedModel):
     """A run of an algorithm."""
 
@@ -45,14 +52,18 @@ class AlgorithmTask(TimeStampedModel):
     algorithm = models.ForeignKey('Algorithm', related_name='tasks', on_delete=models.CASCADE)
     status = models.CharField(choices=Status.choices, default=Status.QUEUED, max_length=16)
     output_log = models.TextField(null=True, blank=True, default='')
-    output_dataset = models.ManyToManyField(
-        ChecksumFile, blank=True, related_name='algorithm_tasks'
+    input_dataset = models.ForeignKey(
+        Dataset, related_name='input_tasks', on_delete=models.RESTRICT
+    )
+    output_dataset = models.ForeignKey(
+        Dataset, blank=True, null=True, on_delete=models.RESTRICT, related_name='output_tasks'
     )
 
 
 class Algorithm(TimeStampedModel):
     """An algorithm to run."""
 
+    # The name of the Algorithm
     name = models.CharField(max_length=255)
 
     # The docker image to use
@@ -71,9 +82,6 @@ class Algorithm(TimeStampedModel):
 
     # Whether the GPU should be requested or not
     gpu = models.BooleanField(default=False)
-
-    # The input data
-    input_dataset = models.ManyToManyField(ChecksumFile, blank=True, related_name='algorithms')
 
     class Meta:
         constraints = [
