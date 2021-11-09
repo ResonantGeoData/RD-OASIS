@@ -5,8 +5,8 @@ import django.db.models.deletion
 
 
 def set_default_task_input_dataset(apps, schema_editor):
-    AlgorithmTask = apps.get_model('algorithms', 'AlgorithmTask')
-    Dataset = apps.get_model('algorithms', 'Dataset')
+    AlgorithmTask = apps.get_model('algorithms', 'AlgorithmTask')  # noqa: N806
+    Dataset = apps.get_model('algorithms', 'Dataset')  # noqa: N806
 
     AlgorithmTask.objects.filter(input_dataset=None).update(
         input_dataset=Dataset.objects.get_or_create(name='default_algorithm_task_input_dataset')[0]
@@ -14,7 +14,7 @@ def set_default_task_input_dataset(apps, schema_editor):
 
 
 def reverse_set_default_task_input_dataset(apps, schema_editor):
-    AlgorithmTask = apps.get_model('algorithms', 'AlgorithmTask')
+    AlgorithmTask = apps.get_model('algorithms', 'AlgorithmTask')  # noqa: N806
     AlgorithmTask.objects.filter(input_dataset__name__endswith='_default_input_dataset').update(
         input_dataset=None
     )

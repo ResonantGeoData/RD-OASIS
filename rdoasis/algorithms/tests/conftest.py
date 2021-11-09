@@ -2,8 +2,6 @@ import pytest
 from pytest_factoryboy import register
 from rest_framework.test import APIClient
 
-from rdoasis.algorithms.models import AlgorithmTask, Dataset
-
 from .factories import (
     AlgorithmFactory,
     AlgorithmTaskFactory,
