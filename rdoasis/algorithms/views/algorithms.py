@@ -68,6 +68,24 @@ class DatasetViewSet(ModelViewSet):
     serializer_class = DatasetSerializer
     pagination_class = LimitOffsetPagination
 
+    @swagger_auto_schema(
+        query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
+    )
+    @action(detail=True, methods=['GET'])
+    def files(self, request, pk: str):
+        """Return the task output dataset as a list of files."""
+        dataset: Dataset = get_object_or_404(Dataset.objects.prefetch_related('files'), pk=pk)
+        queryset = dataset.files.all()
+
+        # Paginate
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = ChecksumFileSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = ChecksumFileSerializer(queryset, many=True)
+        return Response(serializer.data)
+
 
 class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
     serializer_class = AlgorithmTaskSerializer
