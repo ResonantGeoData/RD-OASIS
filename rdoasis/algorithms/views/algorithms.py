@@ -3,10 +3,11 @@ import tempfile
 from typing import Iterable
 import zipfile
 
+from django.http.response import StreamingHttpResponse
 from django.utils.encoding import smart_str
 from drf_yasg.utils import no_body, swagger_auto_schema
 from rest_framework import renderers
-from rest_framework.decorators import action, renderer_classes
+from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
@@ -170,14 +171,14 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
         task: AlgorithmTask = get_object_or_404(AlgorithmTask, pk=pk)
         files: Iterable[ChecksumFile] = task.output_dataset.files.all()
 
+        # TODO: Slghtly inefficient, look into a way to stream entire response
         _, zip_file = tempfile.mkstemp()
-
         download_file_name = f'{task.algorithm.safe_name}__task_{task.pk}__output.zip'
         with zipfile.ZipFile(zip_file, 'w') as zf:
             for file in files:
                 zf.writestr(file.name, file.file.read())
 
-        res = Response(open(zip_file, 'rb'), content_type='application/zip')
+        res = StreamingHttpResponse(open(zip_file, 'rb'), content_type='application/zip')
         res['Content-Length'] = os.path.getsize(zip_file)
         res['Content-Disposition'] = f'attachment; filename="{download_file_name}"'
 
