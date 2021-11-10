@@ -1,7 +1,4 @@
-import os
-import tempfile
 from typing import Iterable
-import zipfile
 
 from django.http.response import StreamingHttpResponse
 from django.utils.encoding import smart_str
@@ -15,6 +12,7 @@ from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from rest_framework_extensions.mixins import NestedViewSetMixin
 from rgd.models.file import ChecksumFile
 from rgd.serializers import ChecksumFileSerializer
+import zipstream
 
 from rdoasis.algorithms.models import Algorithm, AlgorithmTask, Dataset, DockerImage
 from rdoasis.algorithms.views.utils import paginate_action
@@ -171,15 +169,15 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
         task: AlgorithmTask = get_object_or_404(AlgorithmTask, pk=pk)
         files: Iterable[ChecksumFile] = task.output_dataset.files.all()
 
-        # TODO: Slghtly inefficient, look into a way to stream entire response
-        _, zip_file = tempfile.mkstemp()
+        # Define response params
         download_file_name = f'{task.algorithm.safe_name}__task_{task.pk}__output.zip'
-        with zipfile.ZipFile(zip_file, 'w') as zf:
-            for file in files:
-                zf.writestr(file.name, file.file.read())
 
-        res = StreamingHttpResponse(open(zip_file, 'rb'), content_type='application/zip')
-        res['Content-Length'] = os.path.getsize(zip_file)
+        # Setup zip stream
+        z = zipstream.ZipFile()
+        for file in files:
+            z.write_iter(file.name, file.file)
+
+        res = StreamingHttpResponse(z, content_type='application/zip')
         res['Content-Disposition'] = f'attachment; filename="{download_file_name}"'
 
         return res
