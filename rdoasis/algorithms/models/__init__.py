@@ -91,11 +91,11 @@ class Algorithm(TimeStampedModel):
             ),
         ]
 
-    def run(self):
+    def run(self, dataset: Dataset):
         # Prevent circular import
         from rdoasis.algorithms.tasks import run_algorithm_task
 
-        task = AlgorithmTask.objects.create(algorithm=self)
+        task = AlgorithmTask.objects.create(algorithm=self, input_dataset=dataset)
         run_algorithm_task.delay(algorithm_task_id=task.pk)
 
         return task
