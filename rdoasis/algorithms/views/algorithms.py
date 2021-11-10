@@ -1,5 +1,3 @@
-from typing import Iterable
-
 from django.http.response import StreamingHttpResponse
 from django.utils.encoding import smart_str
 from drf_yasg.utils import no_body, swagger_auto_schema
@@ -10,9 +8,7 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from rest_framework_extensions.mixins import NestedViewSetMixin
-from rgd.models.file import ChecksumFile
 from rgd.serializers import ChecksumFileSerializer
-import zipstream
 
 from rdoasis.algorithms.models import Algorithm, AlgorithmTask, Dataset, DockerImage
 from rdoasis.algorithms.views.utils import paginate_action
