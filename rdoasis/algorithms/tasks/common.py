@@ -9,14 +9,16 @@ import celery
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rgd.models.common import ChecksumFile
 
-from rdoasis.algorithms.models import Algorithm, AlgorithmTask
+from rdoasis.algorithms.models import Algorithm, AlgorithmTask, Dataset
 
 
 class ManagedTask(celery.Task):
     def _upload_result_files(self):
         """Upload any new files to the output dataset."""
         new_checksum_files: List[ChecksumFile] = []
-        existing_filenames: Set[str] = {file.name for file in self.algorithm.input_dataset.all()}
+        existing_filenames: Set[str] = {
+            file.name for file in self.algorithm_task.input_dataset.files.all()
+        }
         for path, _, files in os.walk(self.output_dir):
             fixed_filenames = {os.path.join(path, file) for file in files}
             new_filenames = fixed_filenames - existing_filenames
@@ -34,12 +36,12 @@ class ManagedTask(celery.Task):
                 new_checksum_files.append(checksum_file)
                 existing_filenames.add(f)
 
-        self.algorithm_task.output_dataset.add(*new_checksum_files)
+        self.algorithm_task.output_dataset.files.add(*new_checksum_files)
 
     def _download_input_dataset(self):
         """Download the input dataset."""
         self.input_dataset_paths: List[Path] = []
-        files: List[ChecksumFile] = list(self.algorithm.input_dataset.all())
+        files: List[ChecksumFile] = list(self.algorithm_task.input_dataset.files.all())
         for checksum_file in files:
             self.input_dataset_paths.append(checksum_file.download_to_local_path(self.input_dir))
 
@@ -57,9 +59,9 @@ class ManagedTask(celery.Task):
 
     def _setup(self, **kwargs):
         # Set algorithm task and update status
-        self.algorithm_task: AlgorithmTask = AlgorithmTask.objects.select_related('algorithm').get(
-            pk=kwargs['algorithm_task_id']
-        )
+        self.algorithm_task: AlgorithmTask = AlgorithmTask.objects.select_related(
+            'algorithm', 'input_dataset', 'output_dataset'
+        ).get(pk=kwargs['algorithm_task_id'])
         self.algorithm_task.status = AlgorithmTask.Status.RUNNING
         self.algorithm_task.save()
 
@@ -88,6 +90,11 @@ class ManagedTask(celery.Task):
         self._cleanup()
 
     def on_success(self, retval, task_id, args, kwargs):
+        # Create output dataset
+        self.algorithm_task.output_dataset = Dataset.objects.create(
+            name=f'algorithm_task_{self.algorithm_task.pk}_output'
+        )
+
         self._upload_result_files()
 
         # Check for nonzero exit code

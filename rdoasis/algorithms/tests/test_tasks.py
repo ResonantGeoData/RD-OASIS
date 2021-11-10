@@ -64,7 +64,7 @@ def test_successful_task(algorithm_task: AlgorithmTask):
     assert algorithm_task.status == AlgorithmTask.Status.SUCCEEDED
     assert algorithm_task.output_log == 'OUTPUT!'
 
-    files: List[ChecksumFile] = list(algorithm_task.output_dataset.all())
+    files: List[ChecksumFile] = list(algorithm_task.output_dataset.files.all())
     assert len(files) == 1
     assert files[0].name == 'test.txt'
 
@@ -73,13 +73,13 @@ def test_successful_task(algorithm_task: AlgorithmTask):
 
 
 @pytest.mark.django_db
-def test_sucessful_task_complex_files(algorithm_task_with_input: AlgorithmTask):
+def test_sucessful_task_complex_files(algorithm_task: AlgorithmTask):
     """Test that no input files are duplicated in output, and that all output is present."""
-    succeeding_task_complex_files.delay(algorithm_task_id=algorithm_task_with_input.pk)
-    algorithm_task_with_input.refresh_from_db()
+    succeeding_task_complex_files.delay(algorithm_task_id=algorithm_task.pk)
+    algorithm_task.refresh_from_db()
 
     # Assert output file length
-    output_files = list(algorithm_task_with_input.output_dataset.all())
+    output_files = list(algorithm_task.output_dataset.files.all())
     assert len(output_files) == 4
 
     # Assert output file structure
@@ -92,7 +92,7 @@ def test_sucessful_task_complex_files(algorithm_task_with_input: AlgorithmTask):
     }
 
     # Assert no overlap in file names (could collide if randomly generated)
-    input_files = list(algorithm_task_with_input.algorithm.input_dataset.all())
+    input_files = list(algorithm_task.input_dataset.files.all())
     output_filenames = [f.name for f in output_files]
     assert not any([f.name in output_filenames for f in input_files])
 
@@ -106,25 +106,24 @@ def test_failed_task(algorithm_task: AlgorithmTask):
     assert algorithm_task.status == AlgorithmTask.Status.FAILED
     assert algorithm_task.output_log != ''
 
-    files: List[ChecksumFile] = list(algorithm_task.output_dataset.all())
-    assert len(files) == 0
+    assert algorithm_task.output_dataset is None
 
 
 @pytest.mark.django_db
-def test_managed_task_setup(algorithm_task_with_input: AlgorithmTask):
+def test_managed_task_setup(algorithm_task: AlgorithmTask):
     base_task = ManagedTask()
-    base_task._setup(algorithm_task_id=algorithm_task_with_input.pk)
+    base_task._setup(algorithm_task_id=algorithm_task.pk)
 
     # Assert values set
-    assert base_task.algorithm_task == algorithm_task_with_input
-    assert base_task.algorithm == algorithm_task_with_input.algorithm
+    assert base_task.algorithm_task == algorithm_task
+    assert base_task.algorithm == algorithm_task.algorithm
     assert base_task.output_dir.is_dir()
 
-    algorithm_task_with_input.refresh_from_db()
-    assert algorithm_task_with_input.status == AlgorithmTask.Status.RUNNING
+    algorithm_task.refresh_from_db()
+    assert algorithm_task.status == AlgorithmTask.Status.RUNNING
 
     # Assert downloaded files
-    input_dataset = list(algorithm_task_with_input.algorithm.input_dataset.all())
+    input_dataset = list(algorithm_task.input_dataset.files.all())
 
     assert len(input_dataset) == len(base_task.input_dataset_paths)
     assert all([p.exists() for p in base_task.input_dataset_paths])
@@ -135,9 +134,9 @@ def test_managed_task_setup(algorithm_task_with_input: AlgorithmTask):
 
 
 @pytest.mark.django_db
-def test_managed_task_cleanup(algorithm_task_with_input: AlgorithmTask):
+def test_managed_task_cleanup(algorithm_task: AlgorithmTask):
     base_task = ManagedTask()
-    base_task._setup(algorithm_task_id=algorithm_task_with_input.pk)
+    base_task._setup(algorithm_task_id=algorithm_task.pk)
 
     # Paths to check for later
     input_dataset_paths = base_task.input_dataset_paths

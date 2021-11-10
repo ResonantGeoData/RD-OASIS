@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from rdoasis.algorithms.models import Algorithm, AlgorithmTask, DockerImage
+from rdoasis.algorithms.models import Algorithm, AlgorithmTask, Dataset, DockerImage
 
 
 @admin.register(Algorithm)
@@ -8,9 +8,22 @@ class AlgorithmAdmin(admin.ModelAdmin):
     list_display = ['id', 'name', 'docker_image', 'created', 'modified']
 
 
+@admin.register(Dataset)
+class DatasetAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name', 'created', 'modified']
+
+
 @admin.register(AlgorithmTask)
 class AlgorithmTaskAdmin(admin.ModelAdmin):
-    list_display = ['id', 'algorithm', 'status', 'created', 'modified']
+    list_display = [
+        'id',
+        'algorithm',
+        'input_dataset',
+        'output_dataset',
+        'status',
+        'created',
+        'modified',
+    ]
 
 
 @admin.register(DockerImage)

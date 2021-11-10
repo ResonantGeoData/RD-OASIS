@@ -8,7 +8,7 @@ from rdoasis.algorithms.models import Algorithm, AlgorithmTask
 
 @pytest.mark.docker
 @pytest.mark.django_db
-def test_successful_task(algorithm_factory, docker_image_factory, checksum_file_factory):
+def test_successful_task(algorithm_factory, docker_image_factory, dataset_factory):
     alg: Algorithm = algorithm_factory(
         name='test',
         command='/bin/sh -c "echo DATA > output/hello.txt && echo HI"',
@@ -16,14 +16,14 @@ def test_successful_task(algorithm_factory, docker_image_factory, checksum_file_
     )
 
     # Run task
-    task: AlgorithmTask = alg.run()
+    task: AlgorithmTask = alg.run(dataset=dataset_factory())
     task.refresh_from_db()
 
     # Make assertions
     assert task.status == AlgorithmTask.Status.SUCCEEDED
     assert task.output_log == 'HI\n'
 
-    files: List[ChecksumFile] = list(task.output_dataset.all())
+    files: List[ChecksumFile] = list(task.output_dataset.files.all())
     assert len(files) == 1
     assert files[0].name == 'hello.txt'
 
@@ -33,7 +33,7 @@ def test_successful_task(algorithm_factory, docker_image_factory, checksum_file_
 
 @pytest.mark.docker
 @pytest.mark.django_db
-def test_failed_task(algorithm_factory, docker_image_factory, checksum_file_factory):
+def test_failed_task(algorithm_factory, docker_image_factory, dataset_factory):
     alg: Algorithm = algorithm_factory(
         name='test',
         command='notacommand',
@@ -41,12 +41,12 @@ def test_failed_task(algorithm_factory, docker_image_factory, checksum_file_fact
     )
 
     # Run task
-    task: AlgorithmTask = alg.run()
+    task: AlgorithmTask = alg.run(dataset=dataset_factory())
     task.refresh_from_db()
 
     # Make assertions
     assert task.status == AlgorithmTask.Status.FAILED
-    assert task.output_dataset.all().count() == 0
+    assert task.output_dataset is None or not task.output_dataset.files.count()
 
     # Assert output log isn't empty
     assert task.output_log

@@ -10,6 +10,7 @@ from rest_framework_extensions.routers import ExtendedSimpleRouter
 from rdoasis.algorithms.views.algorithms import (
     AlgorithmTaskViewSet,
     AlgorithmViewSet,
+    DatasetViewSet,
     DockerImageViewSet,
 )
 
@@ -23,13 +24,9 @@ schema_view = get_schema_view(
 
 router = ExtendedSimpleRouter()
 router.register('docker_images', DockerImageViewSet)
-algorithm_routes = router.register('algorithms', AlgorithmViewSet)
-algorithm_routes.register(
-    'tasks',
-    AlgorithmTaskViewSet,
-    basename='task',
-    parents_query_lookups=[f'algorithm__{AlgorithmViewSet.lookup_field}'],
-)
+router.register('datasets', DatasetViewSet)
+router.register('algorithms', AlgorithmViewSet)
+router.register('algorithm_tasks', AlgorithmTaskViewSet, basename='task')
 
 urlpatterns = [
     path('accounts/', include('allauth.urls')),

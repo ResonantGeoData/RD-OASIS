@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from rdoasis.algorithms.models import Algorithm, AlgorithmTask, DockerImage
+from rdoasis.algorithms.models import Algorithm, AlgorithmTask, Dataset, DockerImage
 
 
 class LimitOffsetSerializer(serializers.Serializer):
@@ -24,10 +24,21 @@ class AlgorithmSerializer(serializers.ModelSerializer):
     environment = serializers.DictField(child=serializers.CharField())
 
 
+class DatasetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Dataset
+        fields = '__all__'
+        read_only_fields = ['created', 'modified']
+
+
 class AlgorithmTaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = AlgorithmTask
-        exclude = ['output_log', 'output_dataset']
+        exclude = ['output_log']
+
+
+class AlgorithmTaskQuerySerializer(serializers.Serializer):
+    algorithm_pk = serializers.IntegerField(required=False)
 
 
 class AlgorithmTaskLogsSerializer(serializers.Serializer):
