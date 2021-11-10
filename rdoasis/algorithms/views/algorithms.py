@@ -167,16 +167,9 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
     def download(self, request, pk: str):
         """Return a zip of the output files."""
         task: AlgorithmTask = get_object_or_404(AlgorithmTask, pk=pk)
-        files: Iterable[ChecksumFile] = task.output_dataset.files.all()
-
-        # Define response params
         download_file_name = f'{task.algorithm.safe_name}__task_{task.pk}__output.zip'
 
-        # Setup zip stream
-        z = zipstream.ZipFile()
-        for file in files:
-            z.write_iter(file.name, file.file)
-
+        z = task.output_dataset_zip()
         res = StreamingHttpResponse(z, content_type='application/zip')
         res['Content-Disposition'] = f'attachment; filename="{download_file_name}"'
 
