@@ -1,12 +1,18 @@
+import os
+import tempfile
+from typing import Iterable
+import zipfile
+
 from django.utils.encoding import smart_str
 from drf_yasg.utils import no_body, swagger_auto_schema
 from rest_framework import renderers
-from rest_framework.decorators import action
+from rest_framework.decorators import action, renderer_classes
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from rest_framework_extensions.mixins import NestedViewSetMixin
+from rgd.models.file import ChecksumFile
 from rgd.serializers import ChecksumFileSerializer
 
 from rdoasis.algorithms.models import Algorithm, AlgorithmTask, Dataset, DockerImage
@@ -29,6 +35,14 @@ class PlainTextRenderer(renderers.BaseRenderer):
 
     def render(self, data, media_type=None, renderer_context=None):
         return smart_str(data, encoding=self.charset)
+
+
+class ZipFileRenderer(renderers.BaseRenderer):
+    media_type = 'application/zip'
+    format = ''
+
+    def render(self, data, media_type=None, renderer_context=None):
+        return data
 
 
 class DockerImageViewSet(ModelViewSet):
@@ -141,3 +155,30 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
         output_dataset = task.output_dataset
 
         return output_dataset.files.all() if output_dataset is not None else []
+
+    @swagger_auto_schema(
+        query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
+    )
+    @action(
+        detail=True,
+        methods=['GET'],
+        url_path='output/download',
+        renderer_classes=[ZipFileRenderer],
+    )
+    def download(self, request, pk: str):
+        """Return a zip of the output files."""
+        task: AlgorithmTask = get_object_or_404(AlgorithmTask, pk=pk)
+        files: Iterable[ChecksumFile] = task.output_dataset.files.all()
+
+        _, zip_file = tempfile.mkstemp()
+
+        download_file_name = f'{task.algorithm.safe_name}__task_{task.pk}__output.zip'
+        with zipfile.ZipFile(zip_file, 'w') as zf:
+            for file in files:
+                zf.writestr(file.name, file.file.read())
+
+        res = Response(open(zip_file, 'rb'), content_type='application/zip')
+        res['Content-Length'] = os.path.getsize(zip_file)
+        res['Content-Disposition'] = f'attachment; filename="{download_file_name}"'
+
+        return res

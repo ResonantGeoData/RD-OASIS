@@ -91,6 +91,10 @@ class Algorithm(TimeStampedModel):
             ),
         ]
 
+    @property
+    def safe_name(self):
+        return '_'.join(self.name.split())
+
     def run(self, dataset: Dataset):
         # Prevent circular import
         from rdoasis.algorithms.tasks import run_algorithm_task
