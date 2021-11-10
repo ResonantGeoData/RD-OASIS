@@ -10,7 +10,7 @@ from rest_framework_extensions.mixins import NestedViewSetMixin
 from rgd.serializers import ChecksumFileSerializer
 
 from rdoasis.algorithms.models import Algorithm, AlgorithmTask, Dataset, DockerImage
-from rdoasis.algorithms.views.utils import paginate
+from rdoasis.algorithms.views.utils import paginate_action
 
 from .serializers import (
     AlgorithmSerializer,
@@ -53,7 +53,7 @@ class AlgorithmViewSet(ModelViewSet):
 
     @swagger_auto_schema(query_serializer=LimitOffsetSerializer())
     @action(detail=True, methods=['GET'])
-    @paginate(AlgorithmTaskSerializer)
+    @paginate_action(AlgorithmTaskSerializer)
     def tasks(self, request, pk):
         return AlgorithmTask.objects.filter(algorithm__pk=pk)
 
@@ -67,7 +67,7 @@ class DatasetViewSet(ModelViewSet):
         query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
     )
     @action(detail=True, methods=['GET'])
-    @paginate(ChecksumFileSerializer)
+    @paginate_action(ChecksumFileSerializer)
     def files(self, request, pk: str):
         """Return the task output dataset as a list of files."""
         dataset: Dataset = get_object_or_404(Dataset.objects.prefetch_related('files'), pk=pk)
@@ -123,7 +123,7 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
         query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
     )
     @action(detail=True, methods=['GET'])
-    @paginate(ChecksumFileSerializer)
+    @paginate_action(ChecksumFileSerializer)
     def input(self, request, pk: str):
         """Return the input dataset as a list of files."""
         return get_object_or_404(
@@ -134,7 +134,7 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
         query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
     )
     @action(detail=True, methods=['GET'])
-    @paginate(ChecksumFileSerializer)
+    @paginate_action(ChecksumFileSerializer)
     def output(self, request, pk: str):
         """Return the task output dataset as a list of files."""
         task: AlgorithmTask = get_object_or_404(AlgorithmTask, pk=pk)

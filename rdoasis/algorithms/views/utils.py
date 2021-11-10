@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.serializers import Serializer
 
 
-def paginate(serializer_cls: Serializer):
+def paginate_action(serializer_cls: Serializer):
     def decorator(view_method):
         @wraps(view_method)
         def wrapped(self, *args, **kwargs):
