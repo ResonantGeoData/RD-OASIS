@@ -1,6 +1,7 @@
-from typing import Iterable, Union
-from django.db.models.query import QuerySet
 from functools import wraps
+from typing import Iterable, Union
+
+from django.db.models.query import QuerySet
 from rest_framework.response import Response
 from rest_framework.serializers import Serializer
 
