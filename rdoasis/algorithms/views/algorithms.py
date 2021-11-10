@@ -10,6 +10,7 @@ from rest_framework_extensions.mixins import NestedViewSetMixin
 from rgd.serializers import ChecksumFileSerializer
 
 from rdoasis.algorithms.models import Algorithm, AlgorithmTask, Dataset, DockerImage
+from rdoasis.algorithms.views.utils import paginate
 
 from .serializers import (
     AlgorithmSerializer,
@@ -52,15 +53,9 @@ class AlgorithmViewSet(ModelViewSet):
 
     @swagger_auto_schema(query_serializer=LimitOffsetSerializer())
     @action(detail=True, methods=['GET'])
+    @paginate(AlgorithmTaskSerializer)
     def tasks(self, request, pk):
-        queryset = AlgorithmTask.objects.filter(algorithm__pk=pk)
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = AlgorithmTaskSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = AlgorithmTaskSerializer(queryset, many=True)
-        return Response(serializer.data)
+        return AlgorithmTask.objects.filter(algorithm__pk=pk)
 
 
 class DatasetViewSet(ModelViewSet):
@@ -72,19 +67,13 @@ class DatasetViewSet(ModelViewSet):
         query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
     )
     @action(detail=True, methods=['GET'])
+    @paginate(ChecksumFileSerializer)
     def files(self, request, pk: str):
         """Return the task output dataset as a list of files."""
         dataset: Dataset = get_object_or_404(Dataset.objects.prefetch_related('files'), pk=pk)
         queryset = dataset.files.all()
 
-        # Paginate
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = ChecksumFileSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = ChecksumFileSerializer(queryset, many=True)
-        return Response(serializer.data)
+        return queryset
 
 
 class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
@@ -134,35 +123,21 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
         query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
     )
     @action(detail=True, methods=['GET'])
+    @paginate(ChecksumFileSerializer)
     def input(self, request, pk: str):
         """Return the input dataset as a list of files."""
-        task: AlgorithmTask = get_object_or_404(AlgorithmTask, pk=pk)
-        queryset = task.input_dataset.files.all()
-
-        # Paginate
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = ChecksumFileSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = ChecksumFileSerializer(queryset, many=True)
-        return Response(serializer.data)
+        return get_object_or_404(
+            AlgorithmTask.objects.select_related('input_dataset'), pk=pk
+        ).input_dataset.files.all()
 
     @swagger_auto_schema(
         query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
     )
     @action(detail=True, methods=['GET'])
+    @paginate(ChecksumFileSerializer)
     def output(self, request, pk: str):
         """Return the task output dataset as a list of files."""
         task: AlgorithmTask = get_object_or_404(AlgorithmTask, pk=pk)
         output_dataset = task.output_dataset
-        queryset = output_dataset.files.all() if output_dataset is not None else []
 
-        # Paginate
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = ChecksumFileSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = ChecksumFileSerializer(queryset, many=True)
-        return Response(serializer.data)
+        return output_dataset.files.all() if output_dataset is not None else []
