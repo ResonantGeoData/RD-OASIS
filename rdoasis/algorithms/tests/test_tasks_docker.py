@@ -46,7 +46,7 @@ def test_failed_task(algorithm_factory, docker_image_factory, dataset_factory):
 
     # Make assertions
     assert task.status == AlgorithmTask.Status.FAILED
-    assert task.output_dataset is None
+    assert task.output_dataset is None or not task.output_dataset.files.count()
 
     # Assert output log isn't empty
     assert task.output_log
