@@ -13,6 +13,7 @@ from rdoasis.algorithms.models import Algorithm, AlgorithmTask, Dataset, DockerI
 from rdoasis.algorithms.views.utils import paginate_action
 
 from .serializers import (
+    AlgorithmQuerySerializer,
     AlgorithmSerializer,
     AlgorithmTaskLogsSerializer,
     AlgorithmTaskQuerySerializer,
@@ -41,6 +42,21 @@ class AlgorithmViewSet(ModelViewSet):
     queryset = Algorithm.objects.all()
     serializer_class = AlgorithmSerializer
     pagination_class = LimitOffsetPagination
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return
+
+        queryset = Algorithm.objects.all()
+        docker_image__pk = self.request.GET.get('docker_image__pk', None)
+        if docker_image__pk is not None:
+            queryset = queryset.filter(docker_image__pk=docker_image__pk)
+
+        return queryset
+
+    @swagger_auto_schema(query_serializer=AlgorithmQuerySerializer())
+    def list(self, *args, **kwargs):
+        return super().list(*args, **kwargs)
 
     @swagger_auto_schema(method='POST', request_body=no_body)
     @action(detail=True, methods=['POST'])
@@ -85,9 +101,9 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
             return
 
         queryset = AlgorithmTask.objects.all()
-        algorithm_pk = self.request.GET.get('algorithm_pk', None)
-        if algorithm_pk is not None:
-            queryset = queryset.filter(algorithm__pk=algorithm_pk)
+        algorithm__pk = self.request.GET.get('algorithm__pk', None)
+        if algorithm__pk is not None:
+            queryset = queryset.filter(algorithm__pk=algorithm__pk)
 
         return queryset
 
