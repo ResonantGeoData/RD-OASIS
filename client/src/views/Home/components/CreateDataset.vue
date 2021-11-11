@@ -173,7 +173,3 @@ export default defineComponent({
     </v-card-text>
   </v-card>
 </template>
-      </v-data-table>
-    </v-card-text>
-  </v-card>
-</template>
