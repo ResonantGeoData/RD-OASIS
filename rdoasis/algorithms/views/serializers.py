@@ -42,6 +42,10 @@ class DatasetSerializer(serializers.ModelSerializer):
     size = serializers.IntegerField(required=False)
 
 
+class DatasetListSerializer(serializers.Serializer):
+    include_output_datasets = serializers.BooleanField(required=False, default=False)
+
+
 class AlgorithmTaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = AlgorithmTask

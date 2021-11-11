@@ -24,7 +24,7 @@ schema_view = get_schema_view(
 
 router = ExtendedSimpleRouter()
 router.register('docker_images', DockerImageViewSet)
-router.register('datasets', DatasetViewSet)
+router.register('datasets', DatasetViewSet, basename='dataset')
 router.register('algorithms', AlgorithmViewSet)
 router.register('algorithm_tasks', AlgorithmTaskViewSet, basename='task')
 

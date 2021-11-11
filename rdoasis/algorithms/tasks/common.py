@@ -92,7 +92,7 @@ class ManagedTask(celery.Task):
     def on_success(self, retval, task_id, args, kwargs):
         # Create output dataset
         self.algorithm_task.output_dataset = Dataset.objects.create(
-            name=f'algorithm_task_{self.algorithm_task.pk}_output'
+            name=f'Algorithm {self.algorithm.pk}, Task {self.algorithm_task.pk} (Output)'
         )
 
         self._upload_result_files()

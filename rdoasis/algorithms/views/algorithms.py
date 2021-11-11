@@ -21,6 +21,7 @@ from .serializers import (
     AlgorithmTaskLogsSerializer,
     AlgorithmTaskQuerySerializer,
     AlgorithmTaskSerializer,
+    DatasetListSerializer,
     DatasetSerializer,
     DockerImageSerializer,
     LimitOffsetSerializer,
@@ -90,9 +91,25 @@ class AlgorithmViewSet(ModelViewSet):
 
 
 class DatasetViewSet(ModelViewSet):
-    queryset = Dataset.objects.all()
     serializer_class = DatasetSerializer
     pagination_class = LimitOffsetPagination
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return
+
+        queryset = Dataset.objects.all()
+        include_output_datasets = self.request.GET.get('include_output_datasets', 'false') == 'true'
+        if not include_output_datasets:
+            queryset = queryset.filter(output_tasks=None)
+
+        return queryset
+
+    @swagger_auto_schema(
+        query_serializer=DatasetListSerializer(), responses={200: DatasetSerializer(many=True)}
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
     @swagger_auto_schema(
         query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
