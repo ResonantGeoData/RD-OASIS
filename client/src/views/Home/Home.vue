@@ -1,10 +1,10 @@
 <script lang="ts">
 import {
-  defineComponent, onMounted, ref, watchEffect,
+  defineComponent, onMounted, ref, watch,
 } from '@vue/composition-api';
 import { axiosInstance } from '@/api';
 import {
-  DockerImage, Algorithm, Task, Dataset,
+  DockerImage, Algorithm, Dataset,
 } from '@/types';
 
 import CreateAlgorithm from './components/CreateAlgorithm.vue';
@@ -24,10 +24,30 @@ export default defineComponent({
 
     const datasets = ref<Dataset[]>([]);
     const datasetDialogOpen = ref(false);
+    const showOutputDatasets = ref(false);
+    const fetchingDatasets = ref(false);
     const fetchDatasets = async () => {
-      const res = await axiosInstance.get('datasets/');
-      datasets.value = res.data.results;
+      fetchingDatasets.value = true;
+
+      try {
+        const res = await axiosInstance.get('datasets/', {
+          params: {
+            // eslint-disable-next-line @typescript-eslint/camelcase
+            include_output_datasets: showOutputDatasets.value,
+          },
+        });
+
+        datasets.value = res.data.results;
+      } catch (error) {
+        // TODO: Handle
+      }
+
+      fetchingDatasets.value = false;
     };
+
+    // Update list if output datasets are desired
+    watch(showOutputDatasets, fetchDatasets);
+
     const datasetCreated = () => {
       datasetDialogOpen.value = false;
       fetchDatasets();
@@ -35,16 +55,33 @@ export default defineComponent({
 
     const dockerImages = ref<DockerImage[]>([]);
     // const dockerImageDialogOpen = ref(false);
+    const fetchingDockerImages = ref(false);
     const fetchDockerImages = async () => {
-      const res = await axiosInstance.get('docker_images/');
-      dockerImages.value = res.data.results;
+      fetchingDockerImages.value = true;
+
+      try {
+        const res = await axiosInstance.get('docker_images/');
+        dockerImages.value = res.data.results;
+      } catch (error) {
+        // TODO: Handle
+      }
+
+      fetchingDockerImages.value = false;
     };
 
     const algorithms = ref<Algorithm[]>([]);
+    const fetchingAlgorithms = ref(false);
     const algorithmDialogOpen = ref(false);
     const fetchAlgortihms = async () => {
-      const res = await axiosInstance.get('algorithms/');
-      algorithms.value = res.data.results;
+      fetchingAlgorithms.value = true;
+      try {
+        const res = await axiosInstance.get('algorithms/');
+        algorithms.value = res.data.results;
+      } catch (error) {
+        // TOOD: Handle
+      }
+
+      fetchingAlgorithms.value = false;
     };
 
     onMounted(() => {
@@ -57,8 +94,14 @@ export default defineComponent({
       datasets,
       datasetCreated,
       datasetDialogOpen,
+      showOutputDatasets,
+      fetchingDatasets,
+
       dockerImages,
+      fetchingDockerImages,
+
       algorithms,
+      fetchingAlgorithms,
       algorithmDialogOpen,
       viewAlgorithm,
     };
@@ -78,6 +121,10 @@ export default defineComponent({
           outlined
           style="height: 100%"
         >
+          <v-progress-linear
+            v-show="fetchingDockerImages"
+            indeterminate
+          />
           <v-card-title>Docker Images</v-card-title>
           <v-list>
             <v-list-item
@@ -104,6 +151,10 @@ export default defineComponent({
           outlined
           style="height: 100%"
         >
+          <v-progress-linear
+            v-show="fetchingDatasets"
+            indeterminate
+          />
           <v-card-title>
             Datasets
             <v-dialog
@@ -124,6 +175,13 @@ export default defineComponent({
               </template>
               <create-dataset @created="datasetCreated" />
             </v-dialog>
+            <v-spacer />
+            <v-switch
+              v-model="showOutputDatasets"
+              label="Show output datasets"
+              hide-details
+              class="mt-0"
+            />
           </v-card-title>
           <v-list dense>
             <v-list-item
@@ -151,6 +209,10 @@ export default defineComponent({
           outlined
           style="height: 100%"
         >
+          <v-progress-linear
+            v-show="fetchingAlgorithms"
+            indeterminate
+          />
           <v-card-title>
             Algorithms
             <v-dialog
