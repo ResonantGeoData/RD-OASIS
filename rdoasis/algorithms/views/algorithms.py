@@ -16,6 +16,7 @@ from rdoasis.algorithms.views.utils import paginate_action
 
 from .serializers import (
     AlgorithmQuerySerializer,
+    AlgorithmRunSerializer,
     AlgorithmSerializer,
     AlgorithmTaskLogsSerializer,
     AlgorithmTaskQuerySerializer,
@@ -68,12 +69,16 @@ class AlgorithmViewSet(ModelViewSet):
     def list(self, *args, **kwargs):
         return super().list(*args, **kwargs)
 
-    @swagger_auto_schema(method='POST', request_body=no_body)
+    @swagger_auto_schema(method='POST', request_body=AlgorithmRunSerializer())
     @action(detail=True, methods=['POST'])
     def run(self, request, pk):
         """Run the algorithm, returning the task."""
+
+        serializer = AlgorithmRunSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
         alg: Algorithm = get_object_or_404(Algorithm, pk=pk)
-        algorithm_task = alg.run()
+        algorithm_task = alg.run(serializer.validated_data['input_dataset'])
 
         return Response(AlgorithmTaskSerializer(algorithm_task).data)
 

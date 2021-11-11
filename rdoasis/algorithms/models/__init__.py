@@ -1,3 +1,4 @@
+from typing import Union
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django_extensions.db.models import TimeStampedModel
@@ -112,11 +113,11 @@ class Algorithm(TimeStampedModel):
     def safe_name(self):
         return '_'.join(self.name.split())
 
-    def run(self, dataset: Dataset):
+    def run(self, dataset_id: Union[str, int]):
         # Prevent circular import
         from rdoasis.algorithms.tasks import run_algorithm_task
 
-        task = AlgorithmTask.objects.create(algorithm=self, input_dataset=dataset)
+        task = AlgorithmTask.objects.create(algorithm=self, input_dataset_id=dataset_id)
         run_algorithm_task.delay(algorithm_task_id=task.pk)
 
         return task

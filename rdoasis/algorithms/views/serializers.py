@@ -28,6 +28,10 @@ class AlgorithmQuerySerializer(serializers.Serializer):
     docker_image__pk = serializers.IntegerField(required=False)
 
 
+class AlgorithmRunSerializer(serializers.Serializer):
+    input_dataset = serializers.IntegerField()
+
+
 class DatasetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Dataset
