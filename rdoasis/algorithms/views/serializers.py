@@ -24,6 +24,10 @@ class AlgorithmSerializer(serializers.ModelSerializer):
     environment = serializers.DictField(child=serializers.CharField())
 
 
+class AlgorithmQuerySerializer(serializers.Serializer):
+    docker_image__pk = serializers.IntegerField(required=False)
+
+
 class DatasetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Dataset
@@ -38,7 +42,7 @@ class AlgorithmTaskSerializer(serializers.ModelSerializer):
 
 
 class AlgorithmTaskQuerySerializer(serializers.Serializer):
-    algorithm_pk = serializers.IntegerField(required=False)
+    algorithm__pk = serializers.IntegerField(required=False)
 
 
 class AlgorithmTaskLogsSerializer(serializers.Serializer):
