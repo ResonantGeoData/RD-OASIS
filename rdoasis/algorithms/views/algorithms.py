@@ -1,3 +1,4 @@
+from django.http.response import StreamingHttpResponse
 from django.utils.encoding import smart_str
 from drf_yasg.utils import no_body, swagger_auto_schema
 from rest_framework import renderers
@@ -29,6 +30,14 @@ class PlainTextRenderer(renderers.BaseRenderer):
 
     def render(self, data, media_type=None, renderer_context=None):
         return smart_str(data, encoding=self.charset)
+
+
+class ZipFileRenderer(renderers.BaseRenderer):
+    media_type = 'application/zip'
+    format = ''
+
+    def render(self, data, media_type=None, renderer_context=None):
+        return data
 
 
 class DockerImageViewSet(ModelViewSet):
@@ -141,3 +150,23 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
         output_dataset = task.output_dataset
 
         return output_dataset.files.all() if output_dataset is not None else []
+
+    @swagger_auto_schema(
+        query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
+    )
+    @action(
+        detail=True,
+        methods=['GET'],
+        url_path='output/download',
+        renderer_classes=[ZipFileRenderer],
+    )
+    def download(self, request, pk: str):
+        """Return a zip of the output files."""
+        task: AlgorithmTask = get_object_or_404(AlgorithmTask, pk=pk)
+        download_file_name = f'{task.algorithm.safe_name}__task_{task.pk}__output.zip'
+
+        z = task.output_dataset_zip()
+        res = StreamingHttpResponse(z, content_type='application/zip')
+        res['Content-Disposition'] = f'attachment; filename="{download_file_name}"'
+
+        return res

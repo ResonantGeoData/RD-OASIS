@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django_extensions.db.models import TimeStampedModel
 from rgd.models import ChecksumFile
+import zipstream
 
 
 class DockerImage(TimeStampedModel):
@@ -59,6 +60,18 @@ class AlgorithmTask(TimeStampedModel):
         Dataset, blank=True, null=True, on_delete=models.RESTRICT, related_name='output_tasks'
     )
 
+    def output_dataset_zip(self) -> zipstream.ZipFile:
+        """
+        Return the files in this task's output dataset, as a streamed zip file.
+
+        The returned stream yields chunks of the zip file when iterated over.
+        """
+        z = zipstream.ZipFile()
+        for file in self.output_dataset.files.all():
+            z.write_iter(file.name, file.file)
+
+        return z
+
 
 class Algorithm(TimeStampedModel):
     """An algorithm to run."""
@@ -90,6 +103,10 @@ class Algorithm(TimeStampedModel):
                 name='only_objects', check=models.Q(environment__startswith='{')
             ),
         ]
+
+    @property
+    def safe_name(self):
+        return '_'.join(self.name.split())
 
     def run(self, dataset: Dataset):
         # Prevent circular import

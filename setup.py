@@ -53,6 +53,7 @@ setup(
         'flower',
         'gputil',
         'rules',
+        'zipstream==1.1.4',
         # Production-only
         'django-composed-configuration[prod]',
         'django-s3-file-field[boto3]',
