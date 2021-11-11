@@ -1,3 +1,4 @@
+from django.db import models
 from django.http.response import StreamingHttpResponse
 from django.utils.encoding import smart_str
 from drf_yasg.utils import no_body, swagger_auto_schema

@@ -39,6 +39,10 @@ class Dataset(TimeStampedModel):
     name = models.CharField(max_length=256, unique=True)
     files = models.ManyToManyField(ChecksumFile, blank=True, related_name='datasets')
 
+    @property
+    def size(self):
+        return sum(f.file.size for f in self.files.all())
+
 
 class AlgorithmTask(TimeStampedModel):
     """A run of an algorithm."""

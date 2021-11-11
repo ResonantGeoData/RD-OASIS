@@ -32,7 +32,10 @@ class DatasetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Dataset
         fields = '__all__'
-        read_only_fields = ['created', 'modified']
+        read_only_fields = ['created', 'modified', 'size']
+
+    # Add property field
+    size = serializers.IntegerField(required=False)
 
 
 class AlgorithmTaskSerializer(serializers.ModelSerializer):
