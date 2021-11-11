@@ -5,7 +5,7 @@ import {
 import VJsoneditor from 'v-jsoneditor';
 
 import { axiosInstance } from '@/api';
-import { ChecksumFile, DockerImage } from '@/types';
+import { Dataset, DockerImage } from '@/types';
 import UploadDialog from '@/components/UploadDialog.vue';
 
 export default defineComponent({
@@ -23,15 +23,12 @@ export default defineComponent({
     const entrypoint = ref<string | null>(null);
     const gpu = ref(true);
     const dockerImage = ref<DockerImage | null>(null);
-    const inputDataset = ref([] as ChecksumFile[]);
     const environment = ref({});
 
     // Form validation
     const nonEmptyRule = (val: unknown) => (!!val || 'This field is required');
     const formValid = ref(false);
-    const customFormFieldsValid = computed(() => (
-      dockerImage.value !== null && inputDataset.value.length
-    ));
+    const customFormFieldsValid = computed(() => dockerImage.value !== null);
     const allFieldsValid = computed(() => formValid.value && customFormFieldsValid.value);
 
     // Docker images
@@ -43,35 +40,32 @@ export default defineComponent({
       dockerImageList.value = dockerImageRes.data.results;
     }
 
-    // Files
-    const uploadDialogOpen = ref(false);
-    const inputDatasetDialogOpen = ref(false);
-    const fileListLoading = ref(false);
-    const fileListHeaders = [{ text: 'Name', value: 'name' }, { text: 'Type (File/Url)', value: 'type' }];
-    const fileList = ref<ChecksumFile[]>([]);
-    async function fetchFileList() {
-      fileListLoading.value = true;
+    // Dataset
+    const datasetListLoading = ref(false);
+    const datasetHeaders = [
+      { text: 'Name', value: 'name' },
+      { text: 'Num Files', value: 'files' },
+      { text: 'Size (Bytes)', value: 'size' },
+    ];
+    const datasetList = ref<Dataset[]>([]);
+    async function fetchdatasetList() {
+      datasetListLoading.value = true;
 
       try {
         // TODO: Deal with server pagination
-        const fileRes = await axiosInstance.get('rgd/checksum_file');
-        fileList.value = fileRes.data.results;
+        const datasetsRes = await axiosInstance.get('datasets/');
+        datasetList.value = datasetsRes.data.results;
       } catch (error) {
         // TODO: Handle
       }
 
-      fileListLoading.value = false;
-    }
-
-    async function inputDataUploaded() {
-      uploadDialogOpen.value = false;
-      fetchFileList();
+      datasetListLoading.value = false;
     }
 
     // Intialize on mount
     onMounted(async () => {
       fetchDockerImageList();
-      fetchFileList();
+      fetchdatasetList();
     });
 
     function resetForm() {
@@ -80,13 +74,12 @@ export default defineComponent({
       entrypoint.value = null;
       gpu.value = true;
       dockerImage.value = null;
-      inputDataset.value = [];
       environment.value = {};
     }
 
     async function createAlgorithm() {
-      if (dockerImage.value === null || !inputDataset.value.length) {
-        throw new Error('Attempted to create algorithm with empty docker image or dataset!');
+      if (!allFieldsValid.value) {
+        throw new Error('Attempted to create algorithm with invalid fields!');
       }
 
       const body = {
@@ -95,9 +88,7 @@ export default defineComponent({
         entrypoint: entrypoint.value,
         gpu: gpu.value,
         // eslint-disable-next-line @typescript-eslint/camelcase
-        docker_image: dockerImage.value.id,
-        // eslint-disable-next-line @typescript-eslint/camelcase
-        input_dataset: inputDataset.value.map((f) => f.id),
+        docker_image: dockerImage.value?.id,
         environment: environment.value,
       };
 
@@ -113,16 +104,12 @@ export default defineComponent({
       entrypoint,
       gpu,
       dockerImage,
-      inputDataset,
-      inputDatasetDialogOpen,
-      uploadDialogOpen,
-      inputDataUploaded,
       environment,
       dockerImageHeaders,
       dockerImageList,
-      fileListHeaders,
-      fileList,
-      fileListLoading,
+      datasetHeaders,
+      datasetList,
+      datasetListLoading,
       createAlgorithm,
 
       // Form
@@ -204,72 +191,6 @@ export default defineComponent({
             />
           </v-card>
         </v-dialog>
-        <v-dialog
-          v-model="inputDatasetDialogOpen"
-          width="60vw"
-        >
-          <template v-slot:activator="{ on }">
-            <v-btn
-              color="primary"
-              class="mx-1"
-              :outlined="!inputDataset.length"
-              v-on="on"
-            >
-              Select Input Data
-              <v-icon right>
-                mdi-file-multiple
-              </v-icon>
-            </v-btn>
-          </template>
-          <v-card>
-            <v-card-title>
-              Input Dataset
-              <v-dialog
-                v-model="uploadDialogOpen"
-                width="50vw"
-              >
-                <template v-slot:activator="{ on: dialog }">
-                  <v-tooltip right>
-                    <template v-slot:activator="{ on: tooltip }">
-                      <v-btn
-                        icon
-                        right
-                        color="primary"
-                        v-on="{...dialog, ...tooltip}"
-                      >
-                        <v-icon>mdi-plus-circle</v-icon>
-                      </v-btn>
-                    </template>
-
-                    Upload new input data
-                  </v-tooltip>
-                </template>
-                <upload-dialog @complete="inputDataUploaded" />
-              </v-dialog>
-              <v-spacer />
-              <v-btn
-                color="secondary"
-                flat
-                @click="inputDatasetDialogOpen = false"
-              >
-                Close
-              </v-btn>
-            </v-card-title>
-            <v-data-table
-              v-model="inputDataset"
-              :loading="fileListLoading"
-              title="Files"
-              :items="fileList"
-              :headers="fileListHeaders"
-              selectable-key="id"
-              show-select
-            />
-          </v-card>
-        </v-dialog>
-        <template v-if="inputDataset.length">
-          ({{ inputDataset.length }} selected)
-        </template>
-
         <v-card-subtitle class="pl-0 pb-0">
           Optional Fields
         </v-card-subtitle>
@@ -292,8 +213,6 @@ export default defineComponent({
           :options="{mode: 'code', mainMenuBar: false}"
         />
       </v-form>
-
-      <!-- <v-btn>Create</v-btn> -->
     </v-card-text>
   </v-card>
 </template>

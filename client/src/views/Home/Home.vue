@@ -1,16 +1,20 @@
 <script lang="ts">
 import {
-  defineComponent, ref, watchEffect,
+  defineComponent, onMounted, ref, watchEffect,
 } from '@vue/composition-api';
 import { axiosInstance } from '@/api';
-import { DockerImage, Algorithm, Task } from '@/types';
+import {
+  DockerImage, Algorithm, Task, Dataset,
+} from '@/types';
 
 import CreateAlgorithm from './components/CreateAlgorithm.vue';
+import CreateDataset from './components/CreateDataset.vue';
 
 export default defineComponent({
   name: 'Home',
   components: {
     CreateAlgorithm,
+    CreateDataset,
   },
   setup(props, ctx) {
     const router = ctx.root.$router;
@@ -18,34 +22,44 @@ export default defineComponent({
       router.push({ name: 'algorithm', params: { id: id.toString() } });
     }
 
+    const datasets = ref<Dataset[]>([]);
+    const datasetDialogOpen = ref(false);
+    const fetchDatasets = async () => {
+      const res = await axiosInstance.get('datasets/');
+      datasets.value = res.data.results;
+    };
+    const datasetCreated = () => {
+      datasetDialogOpen.value = false;
+      fetchDatasets();
+    };
+
     const dockerImages = ref<DockerImage[]>([]);
-    axiosInstance.get('docker_images/').then((res) => {
+    // const dockerImageDialogOpen = ref(false);
+    const fetchDockerImages = async () => {
+      const res = await axiosInstance.get('docker_images/');
       dockerImages.value = res.data.results;
-    });
+    };
 
     const algorithms = ref<Algorithm[]>([]);
-    axiosInstance.get('algorithms/').then((res) => {
+    const algorithmDialogOpen = ref(false);
+    const fetchAlgortihms = async () => {
+      const res = await axiosInstance.get('algorithms/');
       algorithms.value = res.data.results;
-    });
+    };
 
-    const selectedAlgorithm = ref<Algorithm | null>(null);
-    const tasks = ref<Task[] | null>(null);
-    watchEffect(async () => {
-      if (selectedAlgorithm.value === null) {
-        tasks.value = null;
-        return;
-      }
-
-      const res = await axiosInstance.get(`algorithms/${selectedAlgorithm.value.id}/tasks/`);
-      tasks.value = res.data.results.sort(
-        (a: Algorithm, b: Algorithm) => -a.created.localeCompare(b.created),
-      );
+    onMounted(() => {
+      fetchDatasets();
+      fetchDockerImages();
+      fetchAlgortihms();
     });
 
     return {
+      datasets,
+      datasetCreated,
+      datasetDialogOpen,
       dockerImages,
       algorithms,
-      selectedAlgorithm,
+      algorithmDialogOpen,
       viewAlgorithm,
     };
   },
@@ -58,7 +72,7 @@ export default defineComponent({
     style="align-items: start"
   >
     <v-row style="height: 100%; max-height: 100%">
-      <v-col cols="6">
+      <v-col cols="4">
         <v-card
           flat
           outlined
@@ -83,7 +97,55 @@ export default defineComponent({
           </v-list>
         </v-card>
       </v-col>
-      <v-col cols="6">
+
+      <v-col cols="4">
+        <v-card
+          flat
+          outlined
+          style="height: 100%"
+        >
+          <v-card-title>
+            Datasets
+            <v-dialog
+              v-model="datasetDialogOpen"
+              width="50vw"
+            >
+              <template v-slot:activator="{ on }">
+                <v-btn
+                  icon
+                  right
+                  small
+                  v-on="on"
+                >
+                  <v-icon color="success">
+                    mdi-plus-circle
+                  </v-icon>
+                </v-btn>
+              </template>
+              <create-dataset @created="datasetCreated" />
+            </v-dialog>
+          </v-card-title>
+          <v-list dense>
+            <v-list-item
+              v-for="ds in datasets"
+              :key="ds.id"
+              class="my-2"
+              dense
+            >
+              <v-card
+                width="100%"
+              >
+                <v-card-title>{{ ds.name }}</v-card-title>
+                <v-card-text>
+                  Number of files: {{ ds.files.length }}
+                </v-card-text>
+              </v-card>
+            </v-list-item>
+          </v-list>
+        </v-card>
+      </v-col>
+
+      <v-col cols="4">
         <v-card
           flat
           outlined
@@ -91,7 +153,10 @@ export default defineComponent({
         >
           <v-card-title>
             Algorithms
-            <v-dialog width="50vw">
+            <v-dialog
+              v-model="algorithmDialogOpen"
+              width="50vw"
+            >
               <template v-slot:activator="{ on }">
                 <v-btn
                   icon

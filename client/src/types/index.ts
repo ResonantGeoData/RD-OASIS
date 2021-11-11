@@ -17,6 +17,11 @@ export interface DockerImage extends Model {
   image_file: number | null;
 }
 
+export interface Dataset extends Model {
+  name: string;
+  files: number[];
+}
+
 export interface Algorithm extends Model {
   name: string;
   environment: {[key: string]: string};

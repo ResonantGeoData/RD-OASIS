@@ -1,6 +1,6 @@
 <script lang="ts">
 import {
-  defineComponent, ref, watchEffect, onMounted, computed,
+  defineComponent, ref, onMounted, computed, watch,
 } from '@vue/composition-api';
 import VJsoneditor from 'v-jsoneditor';
 
@@ -92,19 +92,7 @@ export default defineComponent({
       });
     }
 
-    const selectedTaskLogs = ref('');
-    const selectedTaskFiles = ref<{}[]>([]);
-    watchEffect(async () => {
-      if (selectedTask.value === null) {
-        return;
-      }
-
-      const taskUrl = `algorithms/${props.id}/tasks/${selectedTask.value.id}`;
-      selectedTaskLogs.value = (await axiosInstance.get(`${taskUrl}/logs/`)).data;
-      selectedTaskFiles.value = (await axiosInstance.get(`${taskUrl}/output/`)).data.results;
-    });
-
-    const taskStatusIconStyle = (task: Task): {icon: string; color: string} => {
+    function taskStatusIconStyle(task: Task): {icon: string; color: string} {
       switch (task.status) {
         case 'created':
         case 'queued':
@@ -118,59 +106,70 @@ export default defineComponent({
         default:
           return { icon: 'mdi-help', color: 'warning' };
       }
-    };
+    }
 
-    const runAlgorithm = async () => {
-      const res = await axiosInstance.post(`algorithms/${props.id}/run/`);
-      if (res.status === 200) {
-        fetchTasks();
+    // /////////////////
+    // Selected Task
+    // /////////////////
+    const selectedTaskLogs = ref('');
+    async function fetchSelectedTaskLogs() {
+      if (selectedTask.value === null) {
+        return;
       }
-    };
 
-    // /////////////////
-    // Input Dataset
-    // /////////////////
-    const uploadDialogOpen = ref(false);
-    const inputDataset = ref<ChecksumFile[]>([]);
-    const fetchingInputDataset = ref(false);
-    async function fetchInputDataset() {
-      fetchingInputDataset.value = true;
+      const res = await axiosInstance.get(`algorithm_tasks/${selectedTask.value.id}/logs/`);
+      selectedTaskLogs.value = res.data;
+    }
+
+    const selectedTaskFiles = ref<{}[]>([]);
+    async function fetchSelectedTaskOutput() {
+      if (selectedTask.value === null) {
+        return;
+      }
+
+      const res = await axiosInstance.get(`algorithm_tasks/${selectedTask.value.id}/output/`);
+      selectedTaskFiles.value = res.data.results;
+    }
+
+    const selectedTaskInput = ref<ChecksumFile[]>([]);
+    const fetchingSelectedTaskInput = ref(false);
+    async function fetchSelectedTaskInput() {
+      if (selectedTask.value === null) {
+        return;
+      }
+
+      fetchingSelectedTaskInput.value = true;
       try {
-        const res = await axiosInstance.get(`algorithms/${props.id}/input/`);
-        inputDataset.value = res.data.results;
+        const res = await axiosInstance.get(`algorithm_tasks/${selectedTask.value.id}/input/`);
+        selectedTaskInput.value = res.data.results;
       } catch (error) {
         // TODO: Handle
       }
 
-      fetchingInputDataset.value = false;
+      fetchingSelectedTaskInput.value = false;
     }
 
-    async function addFilesToInputDataset(files: ChecksumFile[]) {
-      if (algorithm.value === undefined) {
-        throw new Error('Algorithm is undefined!');
+    watch(selectedTask, () => {
+      fetchSelectedTaskLogs();
+      fetchSelectedTaskInput();
+      fetchSelectedTaskOutput();
+    });
+
+    // /////////////////
+    // Misc
+    // /////////////////
+
+    // TODO: Update to include selected dataset
+    async function runAlgorithm() {
+      const res = await axiosInstance.post(`algorithms/${props.id}/run/`);
+      if (res.status === 200) {
+        fetchTasks();
       }
-
-      // eslint-disable-next-line @typescript-eslint/camelcase
-      algorithm.value.input_dataset = algorithm.value.input_dataset.concat(files.map((f) => f.id));
-      saveAlgorithm();
-    }
-
-    async function handleUploadComplete(files: ChecksumFile[]) {
-      uploadDialogOpen.value = false;
-      await addFilesToInputDataset(files);
-
-      // Slightly wait to ensure response is valid
-      fetchingInputDataset.value = true;
-      await new Promise((r) => setTimeout(r, 100));
-
-      // Fetch new input data
-      await fetchInputDataset();
     }
 
     onMounted(() => {
       fetchAlgorithm();
       fetchTasks();
-      fetchInputDataset();
     });
 
     return {
@@ -180,10 +179,9 @@ export default defineComponent({
       fetchingAlgorithm,
       fetchAlgorithm,
       saveAlgorithm,
-      uploadDialogOpen,
-      inputDataset,
-      fetchingInputDataset,
-      handleUploadComplete,
+      selectedTaskInput,
+      fetchingSelectedTaskInput,
+      fetchSelectedTaskInput,
       tasks,
       taskStatusIconStyle,
       selectedTask,
@@ -223,10 +221,7 @@ export default defineComponent({
               </v-icon>
             </v-btn>
             <v-toolbar-title>
-              Algorithm {{ algorithm.id }}
-              <template v-if="algorithm.name">
-                ({{ algorithm.name }})
-              </template>
+              {{ algorithm.name }} ({{ algorithm.id }})
             </v-toolbar-title>
           </template>
           <template
@@ -333,28 +328,12 @@ export default defineComponent({
             <v-sheet>
               <v-card-title>
                 Input Dataset
-                <v-dialog
-                  v-model="uploadDialogOpen"
-                  width="50vw"
-                >
-                  <template v-slot:activator="{ on }">
-                    <v-btn
-                      icon
-                      right
-                      color="primary"
-                      v-on="on"
-                    >
-                      <v-icon>mdi-plus-circle</v-icon>
-                    </v-btn>
-                  </template>
-                  <upload-dialog @complete="handleUploadComplete" />
-                </v-dialog>
               </v-card-title>
               <v-divider />
               <v-data-table
                 :headers="fileTableHeaders"
-                :items="inputDataset"
-                :loading="fetchingInputDataset"
+                :items="selectedTaskInput"
+                :loading="fetchingSelectedTaskInput"
               >
                 <!-- eslint-disable-next-line vue/valid-v-slot -->
                 <template v-slot:item.type="{ item }">
