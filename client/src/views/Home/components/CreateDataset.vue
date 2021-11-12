@@ -161,6 +161,7 @@ export default defineComponent({
               v-model="fileListSearch"
               label="Search Files"
               class="mx-4"
+              clearable
             />
           </template>
 
