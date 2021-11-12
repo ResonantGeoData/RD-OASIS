@@ -20,6 +20,7 @@ export interface DockerImage extends Model {
 export interface Dataset extends Model {
   name: string;
   files: number[];
+  size: number;
 }
 
 export interface Algorithm extends Model {

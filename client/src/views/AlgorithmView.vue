@@ -3,9 +3,12 @@ import {
   defineComponent, ref, onMounted, computed, watch,
 } from '@vue/composition-api';
 import VJsoneditor from 'v-jsoneditor';
+import filesize from 'filesize';
 
 import { axiosInstance } from '@/api';
-import { Algorithm, ChecksumFile, Task } from '@/types';
+import {
+  Algorithm, ChecksumFile, Dataset, Task,
+} from '@/types';
 import UploadDialog from '@/components/UploadDialog.vue';
 
 const fileTableHeaders = [
@@ -21,6 +24,21 @@ const fileTableHeaders = [
   {
     text: 'Download Url',
     value: 'download_url',
+  },
+];
+
+const datasetTableHeaders = [
+  {
+    text: 'Name',
+    value: 'name',
+  },
+  {
+    text: 'Num Files',
+    value: 'files',
+  },
+  {
+    text: 'Size',
+    value: 'size',
   },
 ];
 
@@ -43,6 +61,24 @@ export default defineComponent({
     const algorithm = ref<Algorithm>();
     const showAlgorithmDetails = ref(false);
     const fetchingAlgorithm = ref(false);
+    const runAlgorithmDialog = ref(false);
+
+    // Datasets for running algorithm
+    const datasetList = ref<Dataset[]>([]);
+    const fetchingDatasetList = ref(false);
+    const datasetToRunOn = ref<Dataset | null>(null);
+    async function fetchDatasetList() {
+      fetchingDatasetList.value = true;
+
+      try {
+        const res = await axiosInstance.get('datasets/');
+        datasetList.value = res.data.results;
+      } catch (error) {
+        // TODO: Handle
+      }
+
+      fetchingDatasetList.value = false;
+    }
 
     async function fetchAlgorithm() {
       fetchingAlgorithm.value = true;
@@ -158,36 +194,57 @@ export default defineComponent({
     // /////////////////
     // Misc
     // /////////////////
-
-    // TODO: Update to include selected dataset
     async function runAlgorithm() {
-      const res = await axiosInstance.post(`algorithms/${props.id}/run/`);
+      if (datasetToRunOn.value === null) {
+        throw new Error('Attempted to run algorithm without an input dataset!');
+      }
+
+      const res = await axiosInstance.post(`algorithms/${props.id}/run/`, {
+        // eslint-disable-next-line @typescript-eslint/camelcase
+        input_dataset: datasetToRunOn.value.id,
+      });
+
       if (res.status === 200) {
         fetchTasks();
       }
+
+      runAlgorithmDialog.value = false;
     }
 
     onMounted(() => {
       fetchAlgorithm();
       fetchTasks();
+      fetchDatasetList();
     });
 
     return {
-      fileTableHeaders,
+      filesize,
+
+      datasetTableHeaders,
+      fetchDatasetList,
+      fetchingDatasetList,
+      datasetList,
+      datasetToRunOn,
+
       algorithm,
+      runAlgorithmDialog,
       showAlgorithmDetails,
       fetchingAlgorithm,
       fetchAlgorithm,
       saveAlgorithm,
+
+      tasks,
+      selectedTask,
+      selectedTaskIndex,
+      taskStatusIconStyle,
+
+      fileTableHeaders,
       selectedTaskInput,
       fetchingSelectedTaskInput,
       fetchSelectedTaskInput,
-      tasks,
-      taskStatusIconStyle,
-      selectedTask,
-      selectedTaskIndex,
       selectedTaskLogs,
       selectedTaskFiles,
+
       runAlgorithm,
     };
   },
@@ -277,15 +334,61 @@ export default defineComponent({
                 >
                   Tasks
                   <v-spacer />
-                  <v-btn
-                    class="my-1"
-                    @click="runAlgorithm"
+                  <v-dialog
+                    v-model="runAlgorithmDialog"
+                    width="50vw"
                   >
-                    New Task
-                    <v-icon right>
-                      mdi-rocket-launch
-                    </v-icon>
-                  </v-btn>
+                    <template v-slot:activator="{ on }">
+                      <v-btn
+                        class="my-1"
+                        v-on="on"
+                      >
+                        New Task
+                        <v-icon right>
+                          mdi-rocket-launch
+                        </v-icon>
+                      </v-btn>
+                    </template>
+                    <v-card>
+                      <v-card-title>Select a dataset to run on</v-card-title>
+                      <v-data-table
+                        show-select
+                        single-select
+                        selectable-key="id"
+                        :items="datasetList"
+                        :headers="datasetTableHeaders"
+                        :loading="fetchingDatasetList"
+                        :value="datasetToRunOn ? [datasetToRunOn] : []"
+                        @input="datasetToRunOn = $event[0] || null"
+                      >
+                        <!-- eslint-disable-next-line vue/valid-v-slot -->
+                        <template v-slot:item.files="{ item }">
+                          {{ item.files.length }}
+                        </template>
+
+                        <!-- eslint-disable-next-line vue/valid-v-slot -->
+                        <template v-slot:item.size="{ item }">
+                          {{ filesize(item.size) }}
+                        </template>
+                      </v-data-table>
+                      <v-card-actions>
+                        <v-spacer />
+                        <v-btn
+                          color="secondary"
+                          @click="runAlgorithmDialog = false; datasetToRunOn = null;"
+                        >
+                          Cancel
+                        </v-btn>
+                        <v-btn
+                          color="success"
+                          :disabled="datasetToRunOn === null"
+                          @click="runAlgorithm"
+                        >
+                          Run
+                        </v-btn>
+                      </v-card-actions>
+                    </v-card>
+                  </v-dialog>
                 </v-row>
               </v-list-item-title>
             </v-list-item-content>
