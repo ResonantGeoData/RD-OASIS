@@ -1,8 +1,10 @@
 from typing import Union
+
 from django.db import models
+from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 from django_extensions.db.models import TimeStampedModel
-from rgd.models import ChecksumFile
+from rgd.models import ChecksumFile, FileSourceType
 import zipstream
 
 
@@ -39,10 +41,28 @@ class Dataset(TimeStampedModel):
 
     name = models.CharField(max_length=256, unique=True)
     files = models.ManyToManyField(ChecksumFile, blank=True, related_name='datasets')
+    size = models.PositiveBigIntegerField(null=True)
 
-    @property
-    def size(self):
-        return sum(f.file.size for f in self.files.all())
+    def compute_size(self):
+        """Compute the total size of all files in this dataset."""
+        self.size = sum(
+            (f.file.size for f in self.files.all() if f.type == FileSourceType.FILE_FIELD)
+        )
+        self.save()
+
+        return self.size
+
+
+@receiver(models.signals.m2m_changed, sender=Dataset.files.through)
+def update_dataset_size(sender, instance: Dataset, action: str, reverse: bool, **kwargs):
+    if not reverse and action in ('post_add', 'post_remove', 'post_clear'):
+        instance.compute_size()
+
+
+@receiver(models.signals.post_save, sender=Dataset)
+def init_dataset_size(sender, instance: Dataset, **kwargs):
+    if instance.size is None:
+        instance.compute_size()
 
 
 class AlgorithmTask(TimeStampedModel):

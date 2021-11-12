@@ -1,7 +1,6 @@
-from django.db import models
 from django.http.response import StreamingHttpResponse
 from django.utils.encoding import smart_str
-from drf_yasg.utils import no_body, swagger_auto_schema
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework import renderers
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -74,7 +73,6 @@ class AlgorithmViewSet(ModelViewSet):
     @action(detail=True, methods=['POST'])
     def run(self, request, pk):
         """Run the algorithm, returning the task."""
-
         serializer = AlgorithmRunSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
