@@ -1,6 +1,6 @@
 <script lang="ts">
 import {
-  defineComponent, ref, onMounted, computed, watch,
+  defineComponent, ref, onMounted, computed, watch, watchEffect,
 } from '@vue/composition-api';
 import VJsoneditor from 'v-jsoneditor';
 import filesize from 'filesize';
@@ -128,13 +128,23 @@ export default defineComponent({
       });
     }
 
-    function taskStatusIconStyle(task: Task): {icon: string; color: string} {
+    watchEffect(async () => {
+      if (tasks.value.some((task) => !['failed', 'success'].includes(task.status))) {
+        // Wait 5 seconds
+        await new Promise((r) => setTimeout(r, 5000));
+
+        // Fetch tasks again
+        fetchTasks();
+      }
+    });
+
+    function taskStatusIconStyle(task: Task): {icon: string; color: string; class?: string} {
       switch (task.status) {
         case 'created':
         case 'queued':
           return { icon: 'mdi-pause', color: '' };
         case 'running':
-          return { icon: 'mdi-sync', color: 'primary' };
+          return { icon: 'mdi-autorenew', color: 'primary', class: 'rotate' };
         case 'success':
           return { icon: 'mdi-check', color: 'success' };
         case 'failed':
@@ -415,6 +425,7 @@ export default defineComponent({
                 {{ task.created }}
                 <v-icon
                   :color="taskStatusIconStyle(task).color"
+                  :class="taskStatusIconStyle(task).class || ''"
                   right
                 >
                   {{ taskStatusIconStyle(task).icon }}
@@ -527,3 +538,17 @@ export default defineComponent({
     </v-row>
   </v-container>
 </template>
+
+<style lang="scss">
+.rotate {
+  animation: rotation 1.5s infinite linear;
+}
+@keyframes rotation {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(359deg);
+  }
+}
+</style>
