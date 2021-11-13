@@ -1,5 +1,6 @@
 from typing import Union
 
+import celery
 from django.db import models
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
@@ -41,28 +42,40 @@ class Dataset(TimeStampedModel):
 
     name = models.CharField(max_length=256, unique=True)
     files = models.ManyToManyField(ChecksumFile, blank=True, related_name='datasets')
-    size = models.PositiveBigIntegerField(null=True)
+    size = models.PositiveBigIntegerField(null=True, blank=True)
 
     def compute_size(self):
         """Compute the total size of all files in this dataset."""
         self.size = sum(
-            (f.file.size for f in self.files.all() if f.type == FileSourceType.FILE_FIELD)
+            (file.file.size for file in self.files.all() if file.type == FileSourceType.FILE_FIELD)
         )
         self.save()
 
         return self.size
 
 
+@celery.shared_task()
+def compute_dataset_size(dataset_id: int):
+    dataset: Dataset = Dataset.objects.get(id=dataset_id)
+    return dataset.compute_size()
+
+
 @receiver(models.signals.m2m_changed, sender=Dataset.files.through)
 def update_dataset_size(sender, instance: Dataset, action: str, reverse: bool, **kwargs):
-    if not reverse and action in ('post_add', 'post_remove', 'post_clear'):
-        instance.compute_size()
+    """Compute the dataset size if files have been added/removed."""
+    if (
+        not reverse
+        and instance.pk is not None
+        and action in ('post_add', 'post_remove', 'post_clear')
+    ):
+        compute_dataset_size.delay(instance.pk)
 
 
 @receiver(models.signals.post_save, sender=Dataset)
 def init_dataset_size(sender, instance: Dataset, **kwargs):
-    if instance.size is None:
-        instance.compute_size()
+    """Compute the dataset size if it's not been set yet."""
+    if instance.pk is not None and instance.size is None:
+        compute_dataset_size.delay(instance.pk)
 
 
 class AlgorithmTask(TimeStampedModel):
