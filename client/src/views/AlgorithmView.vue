@@ -438,12 +438,11 @@ export default defineComponent({
 
       <v-col class="pa-0">
         <v-row no-gutters>
-          <v-col>
+          <v-col cols="6">
             <v-sheet>
               <v-card-title>
                 Input Dataset
               </v-card-title>
-              <v-divider />
               <v-data-table
                 :headers="fileTableHeaders"
                 :items="selectedTaskInput"
@@ -471,18 +470,35 @@ export default defineComponent({
               </v-data-table>
             </v-sheet>
           </v-col>
-        </v-row>
-        <v-row
-          v-if="tasks.length"
-          no-gutters
-        >
           <v-col cols="6">
             <v-sheet
               height="100%"
               class="pa-2"
             >
+              <v-card-title>Task Output Log</v-card-title>
+              <v-card-text>
+                <v-textarea
+                  outlined
+                  readonly
+                  :value="selectedTaskLogs"
+                  fill-height
+                  placeholder="This task has no output log..."
+                  hide-details
+                />
+              </v-card-text>
+            </v-sheet>
+          </v-col>
+        </v-row>
+        <v-row
+          v-if="tasks.length"
+          no-gutters
+        >
+          <v-col>
+            <v-sheet
+              height="100%"
+              class="pa-2"
+            >
               <v-card-title>Task Output Files</v-card-title>
-              <v-divider />
               <v-card-text style="height: 100%">
                 <v-data-table
                   :headers="fileTableHeaders"
@@ -510,26 +526,6 @@ export default defineComponent({
                     </v-icon>
                   </template>
                 </v-data-table>
-              </v-card-text>
-            </v-sheet>
-          </v-col>
-          <v-col cols="6">
-            <v-sheet
-              height="100%"
-              class="pa-2"
-            >
-              <v-card-title>Task Output Log</v-card-title>
-
-              <v-divider />
-              <v-card-text>
-                <v-textarea
-                  outlined
-                  readonly
-                  :value="selectedTaskLogs"
-                  fill-height
-                  placeholder="This task has no output log..."
-                  hide-details
-                />
               </v-card-text>
             </v-sheet>
           </v-col>
