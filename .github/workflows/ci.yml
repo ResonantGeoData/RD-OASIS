@@ -5,6 +5,25 @@ on:
   schedule:
     - cron: "0 0 * * *"
 jobs:
+  test-client:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+
+      - name: Install packages
+        run: yarn install
+
+      - name: Run linting
+        run: yarn lint
+
+      - name: Run build
+        run: yarn build
+
   test:
     runs-on: ubuntu-latest
     services:
