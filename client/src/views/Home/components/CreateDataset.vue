@@ -35,7 +35,7 @@ export default defineComponent({
 
       try {
         // TODO: Deal with server pagination
-        const datasetsRes = await axiosInstance.get('rgd/checksum_file');
+        const datasetsRes = await axiosInstance.get('rgd/checksum_file', { params: { limit: 1000 } });
         fileList.value = datasetsRes.data.results;
       } catch (error) {
         // TODO: Handle

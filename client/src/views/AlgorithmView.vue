@@ -42,6 +42,10 @@ const datasetTableHeaders = [
   },
 ];
 
+function taskRunning(task: Task) {
+  return !['failed', 'success'].includes(task.status);
+}
+
 export default defineComponent({
   name: 'AlgorithmView',
   components: {
@@ -122,14 +126,15 @@ export default defineComponent({
         );
 
         // Set default to most recent, if there are any
-        if (tasks.value.length) {
+        if (tasks.value.length && selectedTaskIndex.value === null) {
           selectedTaskIndex.value = 0;
         }
       });
     }
 
+    // Fetch tasks until all are completed
     watchEffect(async () => {
-      if (tasks.value.some((task) => !['failed', 'success'].includes(task.status))) {
+      if (tasks.value.some((task) => taskRunning(task))) {
         // Wait 5 seconds
         await new Promise((r) => setTimeout(r, 5000));
 
@@ -195,10 +200,29 @@ export default defineComponent({
       fetchingSelectedTaskInput.value = false;
     }
 
-    watch(selectedTask, () => {
+    // Update input/output/logs on task switch
+    watch(selectedTaskIndex, () => {
       fetchSelectedTaskLogs();
       fetchSelectedTaskInput();
       fetchSelectedTaskOutput();
+    });
+
+    // If selected task is running, fetch output and logs
+    const initialTaskFetch = ref(false);
+    watch(tasks, () => {
+      // Ignore the first change, it's handled elsewhere
+      if (!initialTaskFetch.value) {
+        initialTaskFetch.value = true;
+        return;
+      }
+
+      // Fetch selected task logs/output if running
+      if (selectedTask.value && taskRunning(selectedTask.value)) {
+        Promise.all([
+          fetchSelectedTaskLogs(),
+          fetchSelectedTaskOutput(),
+        ]);
+      }
     });
 
     // /////////////////
