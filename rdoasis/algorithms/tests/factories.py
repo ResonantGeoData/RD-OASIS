@@ -7,7 +7,7 @@ import factory.fuzzy
 from faker import Faker
 from rgd.models.common import ChecksumFile
 
-from rdoasis.algorithms.models import Algorithm, AlgorithmTask, DockerImage
+from rdoasis.algorithms.models import Algorithm, AlgorithmTask, Dataset, DockerImage
 
 PARENT_DIR = Path(__file__).parent
 DATA_DIR = PARENT_DIR / 'data'
@@ -36,6 +36,17 @@ class ChecksumFileFactory(factory.django.DjangoModelFactory):
     name = factory.LazyFunction(create_checksum_file_name)
 
 
+class DatasetFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Dataset
+
+    # files = factory.LazyFunction(create_dataset_files)
+
+    @factory.post_generation
+    def files(self, create, extracted, **kwargs):
+        self.files.set([ChecksumFileFactory()] * 5)
+
+
 class DockerImageFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = DockerImage
@@ -57,3 +68,4 @@ class AlgorithmTaskFactory(factory.django.DjangoModelFactory):
         model = AlgorithmTask
 
     algorithm = factory.SubFactory(AlgorithmFactory)
+    input_dataset = factory.SubFactory(DatasetFactory)

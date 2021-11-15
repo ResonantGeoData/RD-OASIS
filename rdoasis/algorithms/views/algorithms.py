@@ -1,3 +1,4 @@
+from django.http.response import StreamingHttpResponse
 from django.utils.encoding import smart_str
 from drf_yasg.utils import no_body, swagger_auto_schema
 from rest_framework import renderers
@@ -9,12 +10,16 @@ from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from rest_framework_extensions.mixins import NestedViewSetMixin
 from rgd.serializers import ChecksumFileSerializer
 
-from rdoasis.algorithms.models import Algorithm, AlgorithmTask, DockerImage
+from rdoasis.algorithms.models import Algorithm, AlgorithmTask, Dataset, DockerImage
+from rdoasis.algorithms.views.utils import paginate_action
 
 from .serializers import (
+    AlgorithmQuerySerializer,
     AlgorithmSerializer,
     AlgorithmTaskLogsSerializer,
+    AlgorithmTaskQuerySerializer,
     AlgorithmTaskSerializer,
+    DatasetSerializer,
     DockerImageSerializer,
     LimitOffsetSerializer,
 )
@@ -28,6 +33,14 @@ class PlainTextRenderer(renderers.BaseRenderer):
         return smart_str(data, encoding=self.charset)
 
 
+class ZipFileRenderer(renderers.BaseRenderer):
+    media_type = 'application/zip'
+    format = ''
+
+    def render(self, data, media_type=None, renderer_context=None):
+        return data
+
+
 class DockerImageViewSet(ModelViewSet):
     queryset = DockerImage.objects.all()
     serializer_class = DockerImageSerializer
@@ -39,6 +52,21 @@ class AlgorithmViewSet(ModelViewSet):
     serializer_class = AlgorithmSerializer
     pagination_class = LimitOffsetPagination
 
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return
+
+        queryset = Algorithm.objects.all()
+        docker_image__pk = self.request.GET.get('docker_image__pk', None)
+        if docker_image__pk is not None:
+            queryset = queryset.filter(docker_image__pk=docker_image__pk)
+
+        return queryset
+
+    @swagger_auto_schema(query_serializer=AlgorithmQuerySerializer())
+    def list(self, *args, **kwargs):
+        return super().list(*args, **kwargs)
+
     @swagger_auto_schema(method='POST', request_body=no_body)
     @action(detail=True, methods=['POST'])
     def run(self, request, pk):
@@ -48,23 +76,29 @@ class AlgorithmViewSet(ModelViewSet):
 
         return Response(AlgorithmTaskSerializer(algorithm_task).data)
 
+    @swagger_auto_schema(query_serializer=LimitOffsetSerializer())
+    @action(detail=True, methods=['GET'])
+    @paginate_action(AlgorithmTaskSerializer)
+    def tasks(self, request, pk):
+        return AlgorithmTask.objects.filter(algorithm__pk=pk)
+
+
+class DatasetViewSet(ModelViewSet):
+    queryset = Dataset.objects.all()
+    serializer_class = DatasetSerializer
+    pagination_class = LimitOffsetPagination
+
     @swagger_auto_schema(
         query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
     )
     @action(detail=True, methods=['GET'])
-    def input(self, request, pk: str):
-        """Return the input dataset as a list of files."""
-        alg: Algorithm = get_object_or_404(Algorithm, pk=pk)
-        queryset = alg.input_dataset.all()
+    @paginate_action(ChecksumFileSerializer)
+    def files(self, request, pk: str):
+        """Return the task output dataset as a list of files."""
+        dataset: Dataset = get_object_or_404(Dataset.objects.prefetch_related('files'), pk=pk)
+        queryset = dataset.files.all()
 
-        # Paginate
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = ChecksumFileSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = ChecksumFileSerializer(queryset, many=True)
-        return Response(serializer.data)
+        return queryset
 
 
 class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
@@ -72,23 +106,28 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
     pagination_class = LimitOffsetPagination
 
     def get_queryset(self):
-        """Override get_queryset to return steps from this workflow, in order."""
         if getattr(self, 'swagger_fake_view', False):
             return
 
-        algorithm_pk = self.request.parser_context['kwargs']['parent_lookup_algorithm__pk']
-        return AlgorithmTask.objects.filter(algorithm__pk=algorithm_pk)
+        queryset = AlgorithmTask.objects.all()
+        algorithm__pk = self.request.GET.get('algorithm__pk', None)
+        if algorithm__pk is not None:
+            queryset = queryset.filter(algorithm__pk=algorithm__pk)
+
+        return queryset
+
+    @swagger_auto_schema(query_serializer=AlgorithmTaskQuerySerializer())
+    def list(self, *args, **kwargs):
+        return super().list(*args, **kwargs)
 
     @swagger_auto_schema(
         query_serializer=AlgorithmTaskLogsSerializer(), responses={200: 'The log text.'}
     )
     @action(detail=True, methods=['GET'], renderer_classes=[PlainTextRenderer])
-    def logs(self, request, parent_lookup_algorithm__pk: str, pk: str):
+    def logs(self, request, pk: str):
         """Return the task logs."""
         # Fetch task
-        task: AlgorithmTask = get_object_or_404(
-            AlgorithmTask, algorithm__pk=parent_lookup_algorithm__pk, pk=pk
-        )
+        task: AlgorithmTask = get_object_or_404(AlgorithmTask, pk=pk)
 
         # Grab params
         serializer = AlgorithmTaskLogsSerializer(data=request.query_params)
@@ -109,18 +148,41 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
         query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
     )
     @action(detail=True, methods=['GET'])
-    def output(self, request, parent_lookup_algorithm__pk: str, pk: str):
+    @paginate_action(ChecksumFileSerializer)
+    def input(self, request, pk: str):
+        """Return the input dataset as a list of files."""
+        return get_object_or_404(
+            AlgorithmTask.objects.select_related('input_dataset'), pk=pk
+        ).input_dataset.files.all()
+
+    @swagger_auto_schema(
+        query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
+    )
+    @action(detail=True, methods=['GET'])
+    @paginate_action(ChecksumFileSerializer)
+    def output(self, request, pk: str):
         """Return the task output dataset as a list of files."""
-        task: AlgorithmTask = get_object_or_404(
-            AlgorithmTask, algorithm__pk=parent_lookup_algorithm__pk, pk=pk
-        )
-        queryset = task.output_dataset.all()
+        task: AlgorithmTask = get_object_or_404(AlgorithmTask, pk=pk)
+        output_dataset = task.output_dataset
 
-        # Paginate
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = ChecksumFileSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+        return output_dataset.files.all() if output_dataset is not None else []
 
-        serializer = ChecksumFileSerializer(queryset, many=True)
-        return Response(serializer.data)
+    @swagger_auto_schema(
+        query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
+    )
+    @action(
+        detail=True,
+        methods=['GET'],
+        url_path='output/download',
+        renderer_classes=[ZipFileRenderer],
+    )
+    def download(self, request, pk: str):
+        """Return a zip of the output files."""
+        task: AlgorithmTask = get_object_or_404(AlgorithmTask, pk=pk)
+        download_file_name = f'{task.algorithm.safe_name}__task_{task.pk}__output.zip'
+
+        z = task.output_dataset_zip()
+        res = StreamingHttpResponse(z, content_type='application/zip')
+        res['Content-Disposition'] = f'attachment; filename="{download_file_name}"'
+
+        return res
