@@ -9,12 +9,14 @@ import {
 
 import CreateAlgorithm from './components/CreateAlgorithm.vue';
 import CreateDataset from './components/CreateDataset.vue';
+import CreateDockerImage from './components/CreateDockerImage.vue';
 
 export default defineComponent({
   name: 'Home',
   components: {
     CreateAlgorithm,
     CreateDataset,
+    CreateDockerImage,
   },
   setup(props, ctx) {
     const router = ctx.root.$router;
@@ -54,7 +56,7 @@ export default defineComponent({
     };
 
     const dockerImages = ref<DockerImage[]>([]);
-    // const dockerImageDialogOpen = ref(false);
+    const dockerImageDialogOpen = ref(false);
     const fetchingDockerImages = ref(false);
     const fetchDockerImages = async () => {
       fetchingDockerImages.value = true;
@@ -67,6 +69,11 @@ export default defineComponent({
       }
 
       fetchingDockerImages.value = false;
+    };
+
+    const dockerImageCreated = () => {
+      dockerImageDialogOpen.value = false;
+      fetchDockerImages();
     };
 
     const algorithms = ref<Algorithm[]>([]);
@@ -98,6 +105,8 @@ export default defineComponent({
       fetchingDatasets,
 
       dockerImages,
+      dockerImageDialogOpen,
+      dockerImageCreated,
       fetchingDockerImages,
 
       algorithms,
@@ -125,7 +134,27 @@ export default defineComponent({
             v-show="fetchingDockerImages"
             indeterminate
           />
-          <v-card-title>Docker Images</v-card-title>
+          <v-card-title>
+            Docker Images
+            <v-dialog
+              v-model="dockerImageDialogOpen"
+              width="50vw"
+            >
+              <template v-slot:activator="{ on }">
+                <v-btn
+                  icon
+                  right
+                  small
+                  v-on="on"
+                >
+                  <v-icon color="success">
+                    mdi-plus-circle
+                  </v-icon>
+                </v-btn>
+              </template>
+              <create-docker-image @created="dockerImageCreated" />
+            </v-dialog>
+          </v-card-title>
           <v-list>
             <v-list-item
               v-for="image in dockerImages"
