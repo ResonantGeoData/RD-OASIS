@@ -182,6 +182,11 @@ export default defineComponent({
       selectedTaskFiles.value = res.data.results;
     }
 
+    const outputDatasetDownloadLink = computed(() => (
+      selectedTask.value
+        ? `${axiosInstance.defaults.baseURL}algorithm_tasks/${selectedTask.value.id}/output/download`
+        : null
+    ));
     const selectedTaskInput = ref<ChecksumFile[]>([]);
     const fetchingSelectedTaskInput = ref(false);
     async function fetchSelectedTaskInput() {
@@ -278,6 +283,7 @@ export default defineComponent({
       fetchSelectedTaskInput,
       selectedTaskLogs,
       selectedTaskFiles,
+      outputDatasetDownloadLink,
 
       runAlgorithm,
     };
@@ -522,7 +528,18 @@ export default defineComponent({
               height="100%"
               class="pa-2"
             >
-              <v-card-title>Task Output Files</v-card-title>
+              <v-card-title>
+                Task Output Files
+                <v-btn
+                  icon
+                  right
+                  color="primary"
+                  :href="outputDatasetDownloadLink"
+                  target="_blank"
+                >
+                  <v-icon>mdi-download</v-icon>
+                </v-btn>
+              </v-card-title>
               <v-card-text style="height: 100%">
                 <v-data-table
                   :headers="fileTableHeaders"
