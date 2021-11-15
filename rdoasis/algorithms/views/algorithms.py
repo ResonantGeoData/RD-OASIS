@@ -121,6 +121,16 @@ class DatasetViewSet(ModelViewSet):
 
         return queryset
 
+    @action(
+        detail=True,
+        methods=['GET'],
+        renderer_classes=[ZipFileRenderer],
+    )
+    def download(self, request, pk: str):
+        """Return a zip of the files."""
+        dataset: Dataset = get_object_or_404(Dataset, pk=pk)
+        return dataset.streamed_zip_response()
+
 
 class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
     serializer_class = AlgorithmTaskSerializer
@@ -197,13 +207,13 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
         url_path='output/download',
         renderer_classes=[ZipFileRenderer],
     )
-    def download(self, request, pk: str):
+    def download_output(self, request, pk: str):
         """Return a zip of the output files."""
-        task: AlgorithmTask = get_object_or_404(AlgorithmTask, pk=pk)
-        download_file_name = f'{task.algorithm.safe_name}__task_{task.pk}__output.zip'
+        task: AlgorithmTask = get_object_or_404(
+            AlgorithmTask.objects.select_related('output_dataset'), pk=pk
+        )
+        output_dataset: Dataset = task.output_dataset
 
-        z = task.output_dataset_zip()
-        res = StreamingHttpResponse(z, content_type='application/zip')
-        res['Content-Disposition'] = f'attachment; filename="{download_file_name}"'
-
-        return res
+        return output_dataset.streamed_zip_response(
+            filename=f'{task.algorithm.safe_name}__task_{task.pk}__output.zip'
+        )

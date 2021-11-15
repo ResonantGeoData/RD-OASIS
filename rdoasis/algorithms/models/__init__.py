@@ -3,6 +3,7 @@ from typing import Union
 import celery
 from django.db import models
 from django.dispatch import receiver
+from django.http.response import StreamingHttpResponse
 from django.utils.translation import gettext_lazy as _
 from django_extensions.db.models import TimeStampedModel
 from rgd.models import ChecksumFile, FileSourceType
@@ -52,6 +53,28 @@ class Dataset(TimeStampedModel):
         self.save()
 
         return self.size
+
+    # TODO: Update to include on the fly iteration of file handles
+    def streamed_zip(self) -> zipstream.ZipFile:
+        """
+        Return the files in this dataset, as a streamed zip file.
+
+        The returned stream yields chunks of the zip file when iterated over.
+        """
+        z = zipstream.ZipFile()
+        for file in self.files.all():
+            z.write_iter(file.name, file.file)
+
+        return z
+
+    def streamed_zip_response(self, filename=None) -> StreamingHttpResponse:
+        download_file_name = filename or f'{self.name}.zip'
+
+        z = self.streamed_zip()
+        res = StreamingHttpResponse(z, content_type='application/zip')
+        res['Content-Disposition'] = f'attachment; filename="{download_file_name}"'
+
+        return res
 
 
 @celery.shared_task()
