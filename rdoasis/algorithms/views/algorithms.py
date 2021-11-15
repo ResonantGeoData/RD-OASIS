@@ -1,6 +1,5 @@
-from django.http.response import StreamingHttpResponse
 from django.utils.encoding import smart_str
-from drf_yasg.utils import no_body, swagger_auto_schema
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework import renderers
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -15,10 +14,12 @@ from rdoasis.algorithms.views.utils import paginate_action
 
 from .serializers import (
     AlgorithmQuerySerializer,
+    AlgorithmRunSerializer,
     AlgorithmSerializer,
     AlgorithmTaskLogsSerializer,
     AlgorithmTaskQuerySerializer,
     AlgorithmTaskSerializer,
+    DatasetListSerializer,
     DatasetSerializer,
     DockerImageSerializer,
     LimitOffsetSerializer,
@@ -67,12 +68,15 @@ class AlgorithmViewSet(ModelViewSet):
     def list(self, *args, **kwargs):
         return super().list(*args, **kwargs)
 
-    @swagger_auto_schema(method='POST', request_body=no_body)
+    @swagger_auto_schema(method='POST', request_body=AlgorithmRunSerializer())
     @action(detail=True, methods=['POST'])
     def run(self, request, pk):
         """Run the algorithm, returning the task."""
+        serializer = AlgorithmRunSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
         alg: Algorithm = get_object_or_404(Algorithm, pk=pk)
-        algorithm_task = alg.run()
+        algorithm_task = alg.run(serializer.validated_data['input_dataset'])
 
         return Response(AlgorithmTaskSerializer(algorithm_task).data)
 
@@ -84,9 +88,25 @@ class AlgorithmViewSet(ModelViewSet):
 
 
 class DatasetViewSet(ModelViewSet):
-    queryset = Dataset.objects.all()
     serializer_class = DatasetSerializer
     pagination_class = LimitOffsetPagination
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return
+
+        queryset = Dataset.objects.all()
+        include_output_datasets = self.request.GET.get('include_output_datasets', 'false') == 'true'
+        if not include_output_datasets:
+            queryset = queryset.filter(output_tasks=None)
+
+        return queryset
+
+    @swagger_auto_schema(
+        query_serializer=DatasetListSerializer(), responses={200: DatasetSerializer(many=True)}
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
     @swagger_auto_schema(
         query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
@@ -99,6 +119,16 @@ class DatasetViewSet(ModelViewSet):
         queryset = dataset.files.all()
 
         return queryset
+
+    @action(
+        detail=True,
+        methods=['GET'],
+        renderer_classes=[ZipFileRenderer],
+    )
+    def download(self, request, pk: str):
+        """Return a zip of the files."""
+        dataset: Dataset = get_object_or_404(Dataset, pk=pk)
+        return dataset.streamed_zip_response()
 
 
 class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
@@ -176,13 +206,13 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
         url_path='output/download',
         renderer_classes=[ZipFileRenderer],
     )
-    def download(self, request, pk: str):
+    def download_output(self, request, pk: str):
         """Return a zip of the output files."""
-        task: AlgorithmTask = get_object_or_404(AlgorithmTask, pk=pk)
-        download_file_name = f'{task.algorithm.safe_name}__task_{task.pk}__output.zip'
+        task: AlgorithmTask = get_object_or_404(
+            AlgorithmTask.objects.select_related('output_dataset'), pk=pk
+        )
+        output_dataset: Dataset = task.output_dataset
 
-        z = task.output_dataset_zip()
-        res = StreamingHttpResponse(z, content_type='application/zip')
-        res['Content-Disposition'] = f'attachment; filename="{download_file_name}"'
-
-        return res
+        return output_dataset.streamed_zip_response(
+            filename=f'{task.algorithm.safe_name}__task_{task.pk}__output.zip'
+        )

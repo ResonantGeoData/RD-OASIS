@@ -16,7 +16,7 @@ def test_successful_task(algorithm_factory, docker_image_factory, dataset_factor
     )
 
     # Run task
-    task: AlgorithmTask = alg.run(dataset=dataset_factory())
+    task: AlgorithmTask = alg.run(dataset_id=dataset_factory().id)
     task.refresh_from_db()
 
     # Make assertions
@@ -41,7 +41,7 @@ def test_failed_task(algorithm_factory, docker_image_factory, dataset_factory):
     )
 
     # Run task
-    task: AlgorithmTask = alg.run(dataset=dataset_factory())
+    task: AlgorithmTask = alg.run(dataset_id=dataset_factory().id)
     task.refresh_from_db()
 
     # Make assertions
