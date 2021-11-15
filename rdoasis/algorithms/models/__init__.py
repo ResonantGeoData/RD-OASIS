@@ -1,4 +1,5 @@
-from typing import Union
+from typing import Dict, Generator, Union
+from zipfile import ZIP_DEFLATED
 
 import celery
 from django.db import models
@@ -8,6 +9,8 @@ from django.utils.translation import gettext_lazy as _
 from django_extensions.db.models import TimeStampedModel
 from rgd.models import ChecksumFile, FileSourceType
 import zipstream
+
+from rdoasis.algorithms.utils.zip import StreamingZipFile
 
 
 class DockerImage(TimeStampedModel):
@@ -54,16 +57,23 @@ class Dataset(TimeStampedModel):
 
         return self.size
 
-    # TODO: Update to include on the fly iteration of file handles
+    def file_object_generator(self, compress_type=None) -> Generator[Dict, None, None]:
+        """Yield zipstream arguments from this dataset's files."""
+        for file in self.files.all():
+            yield {
+                'arcname': file.name,
+                'iterable': file.file,
+                'compress_type': compress_type,
+            }
+
     def streamed_zip(self) -> zipstream.ZipFile:
         """
         Return the files in this dataset, as a streamed zip file.
 
         The returned stream yields chunks of the zip file when iterated over.
         """
-        z = zipstream.ZipFile()
-        for file in self.files.all():
-            z.write_iter(file.name, file.file)
+        z = StreamingZipFile(compression=ZIP_DEFLATED)
+        z.write_from_generator(self.file_object_generator())
 
         return z
 
