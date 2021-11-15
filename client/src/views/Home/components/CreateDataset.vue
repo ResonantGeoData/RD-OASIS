@@ -2,10 +2,9 @@
 import {
   computed, defineComponent, onMounted, ref,
 } from '@vue/composition-api';
-import VJsoneditor from 'v-jsoneditor';
 
 import { axiosInstance } from '@/api';
-import { ChecksumFile, Dataset, DockerImage } from '@/types';
+import { ChecksumFile } from '@/types';
 import UploadDialog from '@/components/UploadDialog.vue';
 
 const fileListHeaders = [
@@ -20,8 +19,6 @@ export default defineComponent({
     UploadDialog,
   },
   setup(props, ctx) {
-    const router = ctx.root.$router;
-
     // Form datafileList
     const name = ref('');
     const files = ref<ChecksumFile[]>([]);
