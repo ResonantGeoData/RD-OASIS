@@ -1,14 +1,17 @@
 <script lang="ts">
 import { uploadFiles } from '@/utils/upload';
-import { defineComponent, ref } from '@vue/composition-api';
-import VJsoneditor from 'v-jsoneditor';
+import { defineComponent, ref, watch } from '@vue/composition-api';
 
 export default defineComponent({
-  name: 'CreateAlgorithm',
-  components: {
-    VJsoneditor,
+  name: 'UploadDialog',
+  props: {
+    single: {
+      type: Boolean,
+      default: false,
+    },
   },
   setup(props, ctx) {
+    const filesModel = ref<File[] | File>();
     const files = ref<File[]>([]);
     const uploading = ref(false);
     async function upload() {
@@ -17,10 +20,27 @@ export default defineComponent({
       uploading.value = false;
 
       ctx.emit('complete', uploadedFiles);
+
+      // Cleanup
+      files.value = [];
+      filesModel.value = undefined;
     }
+
+    // Set files to appropriate value
+    watch(filesModel, (val) => {
+      let returnVal = [] as File[];
+      if (val instanceof File) {
+        returnVal = [val];
+      } else if (Array.isArray(val)) {
+        returnVal = val;
+      }
+
+      files.value = returnVal;
+    });
 
     return {
       files,
+      filesModel,
       upload,
       uploading,
     };
@@ -39,8 +59,8 @@ export default defineComponent({
     />
     <v-card-text>
       <v-file-input
-        v-model="files"
-        multiple
+        v-model="filesModel"
+        :multiple="!single"
         clearable
       />
     </v-card-text>
