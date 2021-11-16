@@ -141,7 +141,7 @@ export default defineComponent({
             @complete="fileUploaded"
           />
         </v-dialog>
-        <strong>OR</strong>
+        <span :class="!!imageId ? 'text--disabled': 'font-weight-bold'">OR</span>
         <v-dialog
           v-model="fileSelectDialog"
           width="60vw"
