@@ -2,7 +2,6 @@ import tempfile
 from typing import List
 
 from django.core.files.uploadedfile import SimpleUploadedFile
-import docker
 import pytest
 from rgd.models.common import ChecksumFile
 
@@ -16,6 +15,8 @@ ECHO_AND_WRITE_CMD = '/bin/sh -c "echo DATA > output/hello.txt && echo HI"'
 
 @pytest.fixture
 def saved_docker_image() -> str:
+    import docker
+
     client = docker.from_env()
     image = client.images.pull('alpine')
     with tempfile.NamedTemporaryFile(suffix='.tar') as f:

@@ -7,7 +7,6 @@ from typing import List, Set
 from billiard.einfo import ExceptionInfo
 import celery
 from django.core.files.uploadedfile import SimpleUploadedFile
-import docker
 from rgd.models.common import ChecksumFile
 
 from rdoasis.algorithms.models import Algorithm, AlgorithmTask, Dataset
@@ -54,13 +53,15 @@ class ManagedTask(celery.Task):
         if self.algorithm.docker_image.image_file is None:
             return
 
-        docker_image_file: ChecksumFile = self.algorithm.docker_image.image_file
+        # Import docker
+        import docker
 
         # Namespace
         docker_dir = self.root_dir / 'docker'
         docker_dir.mkdir()
 
         # Set path of downloaded docker image file
+        docker_image_file: ChecksumFile = self.algorithm.docker_image.image_file
         self.docker_image_file_path = docker_image_file.download_to_local_path(docker_dir)
 
         # Load image
