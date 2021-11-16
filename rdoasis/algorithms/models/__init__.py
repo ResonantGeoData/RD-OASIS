@@ -3,6 +3,7 @@ from zipfile import ZIP_DEFLATED
 
 import celery
 from django.db import models
+from django.db.models.functions import Length
 from django.dispatch import receiver
 from django.http.response import StreamingHttpResponse
 from django.utils.translation import gettext_lazy as _
@@ -11,6 +12,9 @@ from rgd.models import ChecksumFile, FileSourceType
 import zipstream
 
 from rdoasis.algorithms.utils.zip import StreamingZipFile
+
+# Register length transform
+models.CharField.register_lookup(Length)
 
 
 class DockerImage(TimeStampedModel):
@@ -33,8 +37,10 @@ class DockerImage(TimeStampedModel):
             # Ensure that only one of these fields can be set at a time
             models.CheckConstraint(
                 check=(
-                    models.Q(image_id__isnull=False, image_file__isnull=True)
-                    | models.Q(image_id__isnull=True, image_file__isnull=False)
+                    models.Q(image_id__isnull=True, image_file__isnull=False)
+                    | models.Q(
+                        image_id__isnull=False, image_id__length__gt=0, image_file__isnull=True
+                    )
                 ),
                 name='single_image_source',
             )
