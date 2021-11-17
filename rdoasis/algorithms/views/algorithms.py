@@ -1,3 +1,4 @@
+from django.db.utils import DatabaseError
 from django.utils.encoding import smart_str
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -6,6 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
+from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from rest_framework_extensions.mixins import NestedViewSetMixin
 from rgd.serializers import ChecksumFileSerializer
@@ -20,6 +22,7 @@ from .serializers import (
     AlgorithmTaskLogsSerializer,
     AlgorithmTaskQuerySerializer,
     AlgorithmTaskSerializer,
+    DatasetFilesUpdateSerializer,
     DatasetListSerializer,
     DatasetSerializer,
     DockerImageSerializer,
@@ -97,7 +100,7 @@ class DatasetViewSet(ModelViewSet):
             return
 
         queryset = Dataset.objects.all()
-        include_output_datasets = self.request.GET.get('include_output_datasets', 'false') == 'true'
+        include_output_datasets = self.request.GET.get('include_output_datasets', 'true') == 'true'
         if not include_output_datasets:
             queryset = queryset.filter(output_tasks=None)
 
@@ -120,6 +123,34 @@ class DatasetViewSet(ModelViewSet):
         queryset = dataset.files.all()
 
         return queryset
+
+    @swagger_auto_schema(
+        request_body=DatasetFilesUpdateSerializer(), responses={200: DatasetSerializer()}
+    )
+    @action(detail=True, methods=['PUT'])
+    def update_files(self, request, pk: str):
+        """Insert/Delete files into/from this Dataset."""
+        serializer = DatasetFilesUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        insert = serializer.validated_data['insert']
+        delete = serializer.validated_data['delete']
+        dataset: Dataset = Dataset.objects.prefetch_related('files').get(id=pk)
+
+        # TODO: Currently, fires off two actions. Only one needs
+        # to be called after both add and remove are run.
+        if insert:
+            try:
+                dataset.files.add(*insert)
+            except DatabaseError as e:
+                return Response({'insert': str(e)}, status=HTTP_400_BAD_REQUEST)
+        if delete:
+            try:
+                dataset.files.remove(*delete)
+            except DatabaseError as e:
+                return Response({'delete': str(e)}, status=HTTP_400_BAD_REQUEST)
+
+        return Response(DatasetSerializer(dataset).data)
 
     @swagger_auto_schema(
         responses={

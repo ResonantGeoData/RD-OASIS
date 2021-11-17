@@ -46,6 +46,11 @@ class DatasetListSerializer(serializers.Serializer):
     include_output_datasets = serializers.BooleanField(required=False, default=False)
 
 
+class DatasetFilesUpdateSerializer(serializers.Serializer):
+    insert = serializers.ListField(child=serializers.IntegerField())
+    delete = serializers.ListField(child=serializers.IntegerField())
+
+
 class AlgorithmTaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = AlgorithmTask
