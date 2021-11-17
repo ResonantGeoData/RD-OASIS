@@ -8,6 +8,12 @@ import { axiosInstance } from '@/api';
 import { Dataset, DockerImage } from '@/types';
 import UploadDialog from '@/components/UploadDialog.vue';
 
+const dockerImageHeaders = [
+  { text: 'Name', value: 'name' },
+  { text: 'Image ID', value: 'image_id' },
+  { text: 'Image File', value: 'image_file' },
+];
+
 export default defineComponent({
   name: 'CreateAlgorithm',
   components: {
@@ -32,7 +38,6 @@ export default defineComponent({
     const allFieldsValid = computed(() => formValid.value && customFormFieldsValid.value);
 
     // Docker images
-    const dockerImageHeaders = [{ text: 'Name', value: 'name' }, { text: 'Image ID', value: 'image_id' }];
     const dockerImageList = ref<DockerImage[]>([]);
     async function fetchDockerImageList() {
       // TODO: Deal with server pagination

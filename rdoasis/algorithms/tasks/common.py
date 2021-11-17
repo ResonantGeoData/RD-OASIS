@@ -45,6 +45,33 @@ class ManagedTask(celery.Task):
         for checksum_file in files:
             self.input_dataset_paths.append(checksum_file.download_to_local_path(self.input_dir))
 
+    def _maybe_download_docker_image_file(self):
+        """Download the uploaded docker image file, if it exists."""
+        # Default to None, in case it's not used
+        self.docker_image_file_path = None
+        self.docker_image_file_id = None
+        if self.algorithm.docker_image.image_file is None:
+            return
+
+        # Import docker
+        import docker
+
+        # Namespace
+        docker_dir = self.root_dir / 'docker'
+        docker_dir.mkdir()
+
+        # Set path of downloaded docker image file
+        docker_image_file: ChecksumFile = self.algorithm.docker_image.image_file
+        self.docker_image_file_path = docker_image_file.download_to_local_path(docker_dir)
+
+        # Load image
+        client = docker.from_env()
+        with open(self.docker_image_file_path, 'rb') as f:
+            result = client.images.load(f.read())
+
+        # Set ID of loaded docker image
+        self.docker_image_file_id = result[0].id
+
     def _create_directories(self):
         # Create root dir
         self.root_dir = Path(tempfile.mkdtemp())
@@ -73,6 +100,9 @@ class ManagedTask(celery.Task):
 
         # Download input
         self._download_input_dataset()
+
+        # Download uploaded docker image if necessary
+        self._maybe_download_docker_image_file()
 
     def _cleanup(self):
         """Perform any necessary cleanup."""

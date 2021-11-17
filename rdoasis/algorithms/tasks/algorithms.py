@@ -35,7 +35,7 @@ def run_algorithm_task(self: ManagedTask, *args, **kwargs):
     client = docker.from_env()
 
     # Get or pull image
-    image_id = self.algorithm.docker_image.image_id
+    image_id = self.docker_image_file_id or self.algorithm.docker_image.image_id
     try:
         image = client.images.get(image_id)
     except ImageNotFound:
