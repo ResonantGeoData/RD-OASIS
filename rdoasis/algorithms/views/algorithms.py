@@ -1,4 +1,5 @@
 from django.utils.encoding import smart_str
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import renderers
 from rest_framework.decorators import action
@@ -120,6 +121,15 @@ class DatasetViewSet(ModelViewSet):
 
         return queryset
 
+    @swagger_auto_schema(
+        responses={
+            '200': openapi.Response(
+                'The Dataset Zip File', schema=openapi.Schema(type=openapi.TYPE_FILE)
+            ),
+            '404': 'Not Found',
+        },
+        produces='application/octet-stream',
+    )
     @action(
         detail=True,
         methods=['GET'],
@@ -198,7 +208,13 @@ class AlgorithmTaskViewSet(NestedViewSetMixin, ReadOnlyModelViewSet):
         return output_dataset.files.all() if output_dataset is not None else []
 
     @swagger_auto_schema(
-        query_serializer=LimitOffsetSerializer(), responses={200: ChecksumFileSerializer(many=True)}
+        responses={
+            '200': openapi.Response(
+                'The Zipped Output Files', schema=openapi.Schema(type=openapi.TYPE_FILE)
+            ),
+            '404': 'Not Found',
+        },
+        produces='application/octet-stream',
     )
     @action(
         detail=True,
