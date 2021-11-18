@@ -1,7 +1,7 @@
 import pytest
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_rest_dataset_update_files(dataset, checksum_file_factory, authenticated_api_client):
     new_file = checksum_file_factory()
 
