@@ -43,7 +43,7 @@ def docker_image_from_file(
 
 
 @pytest.mark.docker
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_successful_task(algorithm_factory, docker_image_factory, dataset_factory):
     alg: Algorithm = algorithm_factory(
         name='test',
@@ -68,7 +68,7 @@ def test_successful_task(algorithm_factory, docker_image_factory, dataset_factor
 
 
 @pytest.mark.docker
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_successful_task_image_file(algorithm_factory, docker_image_from_file, dataset_factory):
     alg: Algorithm = algorithm_factory(
         name='test', command=ECHO_AND_WRITE_CMD, docker_image=docker_image_from_file
@@ -91,7 +91,7 @@ def test_successful_task_image_file(algorithm_factory, docker_image_from_file, d
 
 
 @pytest.mark.docker
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize('command', FAILING_COMMANDS)
 def test_failed_task(algorithm_factory, docker_image_factory, dataset_factory, command):
     alg: Algorithm = algorithm_factory(
@@ -113,7 +113,7 @@ def test_failed_task(algorithm_factory, docker_image_factory, dataset_factory, c
 
 
 @pytest.mark.docker
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize('command', FAILING_COMMANDS)
 def test_failed_task_image_file(
     algorithm_factory, docker_image_from_file, dataset_factory, command

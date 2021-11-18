@@ -56,7 +56,7 @@ def failing_task(self, *args, **kwargs):
     raise Exception('Task failed')
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_successful_task(algorithm_task: AlgorithmTask):
     succeeding_task.delay(algorithm_task_id=algorithm_task.pk)
     algorithm_task.refresh_from_db()
@@ -72,7 +72,7 @@ def test_successful_task(algorithm_task: AlgorithmTask):
     assert file.file.read() == b'Test Output'
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_sucessful_task_complex_files(algorithm_task: AlgorithmTask):
     """Test that no input files are duplicated in output, and that all output is present."""
     succeeding_task_complex_files.delay(algorithm_task_id=algorithm_task.pk)
@@ -97,7 +97,7 @@ def test_sucessful_task_complex_files(algorithm_task: AlgorithmTask):
     assert not any([f.name in output_filenames for f in input_files])
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_failed_task(algorithm_task: AlgorithmTask):
     failing_task.delay(algorithm_task_id=algorithm_task.pk)
     algorithm_task.refresh_from_db()
@@ -109,7 +109,7 @@ def test_failed_task(algorithm_task: AlgorithmTask):
     assert algorithm_task.output_dataset is None
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_managed_task_setup(algorithm_task: AlgorithmTask):
     base_task = ManagedTask()
     base_task._setup(algorithm_task_id=algorithm_task.pk)
@@ -133,7 +133,7 @@ def test_managed_task_setup(algorithm_task: AlgorithmTask):
     base_task._cleanup()
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_managed_task_cleanup(algorithm_task: AlgorithmTask):
     base_task = ManagedTask()
     base_task._setup(algorithm_task_id=algorithm_task.pk)
