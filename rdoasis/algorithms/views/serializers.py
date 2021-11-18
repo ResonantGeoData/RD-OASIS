@@ -38,9 +38,6 @@ class DatasetSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['created', 'modified', 'size']
 
-    # Add property field
-    size = serializers.IntegerField(required=False)
-
 
 class DatasetListSerializer(serializers.Serializer):
     include_output_datasets = serializers.BooleanField(required=False, default=False)
