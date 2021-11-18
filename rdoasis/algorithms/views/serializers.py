@@ -47,8 +47,8 @@ class DatasetListSerializer(serializers.Serializer):
 
 
 class DatasetFilesUpdateSerializer(serializers.Serializer):
-    insert = serializers.ListField(child=serializers.IntegerField())
-    delete = serializers.ListField(child=serializers.IntegerField())
+    insert = serializers.ListField(child=serializers.IntegerField(), required=False)
+    delete = serializers.ListField(child=serializers.IntegerField(), required=False)
 
 
 class AlgorithmTaskSerializer(serializers.ModelSerializer):

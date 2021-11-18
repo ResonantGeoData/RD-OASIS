@@ -133,8 +133,8 @@ class DatasetViewSet(ModelViewSet):
         serializer = DatasetFilesUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        insert = serializer.validated_data['insert']
-        delete = serializer.validated_data['delete']
+        insert = serializer.validated_data.get('insert')
+        delete = serializer.validated_data.get('delete')
         dataset: Dataset = Dataset.objects.prefetch_related('files').get(id=pk)
 
         # TODO: Currently, fires off two actions. Only one needs
