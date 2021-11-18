@@ -127,7 +127,7 @@ class DatasetViewSet(ModelViewSet):
     @swagger_auto_schema(
         request_body=DatasetFilesUpdateSerializer(), responses={200: DatasetSerializer()}
     )
-    @action(detail=True, methods=['PUT'])
+    @files.mapping.put
     def update_files(self, request, pk: str):
         """Insert/Delete files into/from this Dataset."""
         serializer = DatasetFilesUpdateSerializer(data=request.data)

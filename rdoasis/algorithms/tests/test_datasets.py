@@ -9,7 +9,7 @@ def test_rest_dataset_update_files(dataset, checksum_file_factory, authenticated
     files_to_remove = file_ids[:2]
 
     r = authenticated_api_client.put(
-        f'/api/datasets/{dataset.id}/update_files/',
+        f'/api/datasets/{dataset.id}/files/',
         {
             'insert': [new_file.id],
             'delete': files_to_remove,
@@ -28,7 +28,7 @@ def test_rest_dataset_update_files(dataset, checksum_file_factory, authenticated
 #     # Try to insert file that doesn't exist
 #     invalid_file_id = -1
 #     r = authenticated_api_client.put(
-#         f'/api/datasets/{dataset.id}/update_files/',
+#         f'/api/datasets/{dataset.id}/files/',
 #         {
 #             'insert': [invalid_file_id],
 #             'delete': [],
