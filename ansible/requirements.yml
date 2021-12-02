@@ -1,0 +1,4 @@
+- src: geerlingguy.docker
+- src: andrewrothstein.docker-compose
+- src: nvidia.nvidia_driver
+- src: nvidia.nvidia_docker

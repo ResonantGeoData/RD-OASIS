@@ -1,0 +1,24 @@
+---
+- name: Install docker and nvidia-docker
+  hosts: all
+  become: yes
+
+  roles:
+    - role: geerlingguy.docker
+    - role: nvidia.nvidia_driver
+    - role: nvidia.nvidia_docker
+    - role: geerlingguy.pip
+
+  tasks:
+    # TODO
+    # Ensure python3.8 + pip are installed
+    # Test above role
+
+    # Install project w/ celery requirements
+    - name: Copy project
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../"
+        dest: /opt/django-project
+
+    - name: Install Project
+      ansible.builtin.command: pip3 install /opt/django-project[worker]
