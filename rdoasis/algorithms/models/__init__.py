@@ -168,10 +168,10 @@ class Algorithm(TimeStampedModel):
     entrypoint = models.CharField(max_length=1000, null=True, blank=True, default=None)
 
     # Environment variables to be passed to the container
-    environment = models.JSONField(default=dict)
+    environment = models.JSONField(default=dict, blank=True)
 
     # Whether the GPU should be requested or not
-    gpu = models.BooleanField(default=False)
+    gpu = models.BooleanField(default=False, blank=True)
 
     class Meta:
         constraints = [
