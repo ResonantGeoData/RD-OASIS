@@ -1,10 +1,16 @@
 from django.contrib import admin
+from girder_utils.admin import ReadonlyTabularInline
 
 from rdoasis.algorithms.models import Algorithm, AlgorithmTask, Dataset, DockerImage
 
 
+class AlgorithmTaskInline(ReadonlyTabularInline):
+    model = AlgorithmTask
+
+
 @admin.register(Algorithm)
 class AlgorithmAdmin(admin.ModelAdmin):
+    inlines = [AlgorithmTaskInline]
     list_display = ['id', 'name', 'docker_image', 'created', 'modified']
 
 
