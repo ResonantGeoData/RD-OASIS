@@ -18,7 +18,7 @@ provider "aws" {
 # Template that each node in the ASG will be launched with
 resource "aws_launch_template" "worker_launch_template" {
   name_prefix   = "oasis_worker_"
-  image_id      = data.aws_ami.worker_ami.id
+  image_id      = data.aws_ami.oasis_worker_ami.id
   instance_type = "g4dn.xlarge"
   security_group_names = [aws_security_group.node_security_group.name]
 
@@ -34,10 +34,9 @@ resource "aws_autoscaling_group" "worker_asg" {
   max_size           = 5
   min_size           = 0
   desired_capacity   = 0
-  load_balancers = [aws_elb.asg_load_balancer.name]
 
   launch_template {
-    id      = aws_launch_template.node_launch_template.id
+    id      = aws_launch_template.worker_launch_template.id
     version = "$Latest"
   }
 }
