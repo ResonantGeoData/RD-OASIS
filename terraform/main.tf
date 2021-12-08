@@ -40,3 +40,17 @@ resource "aws_autoscaling_group" "worker_asg" {
     version = "$Latest"
   }
 }
+
+# The RabbitMQ broker
+resource "aws_mq_broker" "oasis_broker" {
+  broker_name = "oasis"
+  engine_type        = "RabbitMQ"
+  engine_version     = "3.8.23"
+  host_instance_type = "mq.t2.micro"
+  security_groups    = [aws_security_group.node_security_group.id]
+
+  user {
+    username = "test"
+    password = "letmeinletmein"
+  }
+}
