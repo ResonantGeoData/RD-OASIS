@@ -188,9 +188,9 @@ class Algorithm(TimeStampedModel):
     def run(self, dataset_id: Union[str, int], celery_task=None):
         if celery_task is None:
             # Prevent circular import
-            from rdoasis.algorithms.tasks import run_algorithm_task
+            from rdoasis.algorithms.tasks import run_algorithm_task_k8s
 
-            celery_task = run_algorithm_task
+            celery_task = run_algorithm_task_k8s
 
         task = AlgorithmTask.objects.create(algorithm=self, input_dataset_id=dataset_id)
         celery_task.delay(algorithm_task_id=task.pk)  # type: ignore

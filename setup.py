@@ -78,5 +78,8 @@ setup(
         'fuse': [
             'django-rgd[configuration,fuse]>=0.2.6.dev10',
         ],
+        'k8s': [
+            'kubernetes',
+        ],
     },
 )
