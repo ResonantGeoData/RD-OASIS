@@ -107,14 +107,14 @@ def update_dataset_size(sender, instance: Dataset, action: str, reverse: bool, *
         and instance.pk is not None
         and action in ('post_add', 'post_remove', 'post_clear')
     ):
-        compute_dataset_size.delay(instance.pk)
+        compute_dataset_size.delay(instance.pk)  # type: ignore
 
 
 @receiver(models.signals.post_save, sender=Dataset)
 def init_dataset_size(sender, instance: Dataset, **kwargs):
     """Compute the dataset size if it's not been set yet."""
     if instance.pk is not None and instance.size is None:
-        compute_dataset_size.delay(instance.pk)
+        compute_dataset_size.delay(instance.pk)  # type: ignore
 
 
 class AlgorithmTask(TimeStampedModel):
@@ -168,10 +168,10 @@ class Algorithm(TimeStampedModel):
     entrypoint = models.CharField(max_length=1000, null=True, blank=True, default=None)
 
     # Environment variables to be passed to the container
-    environment = models.JSONField(default=dict)
+    environment = models.JSONField(default=dict, blank=True)
 
     # Whether the GPU should be requested or not
-    gpu = models.BooleanField(default=False)
+    gpu = models.BooleanField(default=False, blank=True)
 
     class Meta:
         constraints = [
@@ -185,11 +185,14 @@ class Algorithm(TimeStampedModel):
     def safe_name(self):
         return '_'.join(self.name.split())
 
-    def run(self, dataset_id: Union[str, int]):
-        # Prevent circular import
-        from rdoasis.algorithms.tasks import run_algorithm_task
+    def run(self, dataset_id: Union[str, int], celery_task=None):
+        if celery_task is None:
+            # Prevent circular import
+            from rdoasis.algorithms.tasks import run_algorithm_task
+
+            celery_task = run_algorithm_task
 
         task = AlgorithmTask.objects.create(algorithm=self, input_dataset_id=dataset_id)
-        run_algorithm_task.delay(algorithm_task_id=task.pk)
+        celery_task.delay(algorithm_task_id=task.pk)  # type: ignore
 
         return task

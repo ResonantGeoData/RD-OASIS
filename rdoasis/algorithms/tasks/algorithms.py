@@ -6,17 +6,7 @@ from rdoasis.algorithms.tasks.common import ManagedTask
 logger = get_task_logger(__name__)
 
 
-@celery.shared_task(base=ManagedTask, bind=True)
-def run_algorithm_task(self: ManagedTask, *args, **kwargs):
-    """
-    Run an algorithm task.
-
-    Args:
-        algorithm_task_id: The ID of the algorithm task to run.s
-
-    Returns:
-        The status code returned from docker.
-    """
+def _run_algorithm_task(self: ManagedTask, *args, **kwargs):
     # Import docker here to django can import task without docker
     import docker
     from docker.errors import DockerException, ImageNotFound
@@ -76,3 +66,17 @@ def run_algorithm_task(self: ManagedTask, *args, **kwargs):
 
     # Return status code
     return res['StatusCode']
+
+
+@celery.shared_task(base=ManagedTask, bind=True)
+def run_algorithm_task(self: ManagedTask, *args, **kwargs):
+    """
+    Run an algorithm task.
+
+    Args:
+        algorithm_task_id: The ID of the algorithm task to run.s
+
+    Returns:
+        The status code returned from docker.
+    """
+    return _run_algorithm_task(self, *args, **kwargs)

@@ -40,6 +40,8 @@ class DatasetFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Dataset
 
+    name = factory.fuzzy.FuzzyText()
+
     @factory.post_generation
     def files(self, create, extracted, **kwargs):
         self.files.set([ChecksumFileFactory() for _ in range(5)])
