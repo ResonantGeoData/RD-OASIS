@@ -1,3 +1,8 @@
+from pathlib import Path
+import tempfile
+from typing import List
+import re
+
 import celery
 from celery.utils.log import get_task_logger
 from rdoasis.algorithms.models import Algorithm, AlgorithmTask
@@ -26,7 +31,7 @@ class ManagedK8sTask(ManagedTask):
                     access_modes=['ReadWriteOnce'],
                     capacity={'storage': '5Gi'},
                 ),
-                metadata=client.V1ObjectMeta(name='volume'),
+                metadata=client.V1ObjectMeta(name='task-data-volume'),
             )
         )
 
@@ -38,7 +43,24 @@ class ManagedK8sTask(ManagedTask):
         config.load_incluster_config()
 
         coreapi = client.CoreV1Api()
-        coreapi.delete_persistent_volume(name='volume')
+        coreapi.delete_persistent_volume(name='task-data-volume')
+
+    def _generate_directories(self):
+        """Generate paths before creating them."""
+        # Create root dir
+        self.root_dir = Path(tempfile.mkdtemp())
+
+        # Generate input and output dir
+        self.input_dir = self.root_dir / 'input'
+        self.output_dir = self.root_dir / 'output'
+
+    def _make_directories(self):
+        """Make directories after volume mount."""
+
+        # TODO: Currently fails, as there's no way to mount he newly
+        # created persistent volume into this pod
+        self.input_dir.mkdir()
+        self.output_dir.mkdir()
 
     def _setup(self, **kwargs):
         # Set algorithm task and update status
@@ -51,11 +73,14 @@ class ManagedK8sTask(ManagedTask):
         # Set algorithm
         self.algorithm: Algorithm = self.algorithm_task.algorithm
 
-        # Ensure necessary files and directories exist
-        self._create_directories()
+        # Generate directory names
+        self._generate_directories()
 
         # Create volume at self.root_dir
         self.create_k8s_volume()
+
+        # Ensure necessary files and directories exist
+        self._make_directories()
 
         # Download input
         self._download_input_dataset()
@@ -73,7 +98,7 @@ class ManagedK8sTask(ManagedTask):
         return res
 
 
-def _construct_job(temp_path: str):
+def _construct_job(temp_path: str, image_id: str, args: List[str]):
     from kubernetes import client
 
     # Define volume
@@ -83,11 +108,14 @@ def _construct_job(temp_path: str):
     )
 
     # Define container with volume mount
+    container_name = re.sub(r'[^a-zA-Z\d-]', '-', image_id.lower())
     container = client.V1Container(
-        name="busybox",
-        image="busybox",
-        args=["ls", temp_path],
+        name=container_name,
+        image=image_id,
+        args=args,
         volume_mounts=[client.V1VolumeMount(name='task-data', mount_path=temp_path)],
+        working_dir=temp_path,
+        # resources=client.V1ResourceRequirements(limits={'nvidia.com/gpu': 1}),
     )
 
     # Define job template
@@ -101,7 +129,7 @@ def _construct_job(temp_path: str):
     )
 
     # Define the job
-    spec = client.V1JobSpec(template=template, ttl_seconds_after_finished=10)
+    spec = client.V1JobSpec(template=template, ttl_seconds_after_finished=30)
 
     # Instantiate and return the job object
     return client.V1Job(
@@ -128,7 +156,9 @@ def _run_algorithm_task_k8s(self: ManagedK8sTask, *args, **kwargs):
     # )
 
     api = client.BatchV1Api()
-    job: client.V1Job = _construct_job(str(self.root_dir))
+    job: client.V1Job = _construct_job(
+        str(self.root_dir), self.algorithm.docker_image.image_id, self.algorithm.command.split()
+    )
     job: client.V1Job = api.create_namespaced_job(namespace='default', body=job)
 
     while not job.status.active:
