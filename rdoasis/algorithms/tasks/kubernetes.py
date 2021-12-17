@@ -58,6 +58,12 @@ class ManagedK8sTask(ManagedTask):
         job: client.V1Job = _construct_job(str(self.root_dir), self.algorithm_task)
         job: client.V1Job = api.create_namespaced_job(namespace='default', body=job)
 
+    def on_success(self, retval, task_id, args, kwargs):
+        pass
+
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        pass
+
 
 def _construct_job(temp_path: str, alg_task: AlgorithmTask):
     from kubernetes import client, config
@@ -91,6 +97,13 @@ def _construct_job(temp_path: str, alg_task: AlgorithmTask):
         image='oasis-sidecar',
         volume_mounts=[client.V1VolumeMount(name='task-data', mount_path=temp_path)],
         image_pull_policy='Never',
+        lifecycle=client.V1Lifecycle(
+            post_start=client.V1Handler(
+                _exec=client.V1ExecAction(
+                    command=['/opt/django-project/manage.py', 'setup_container_k8s']
+                ),
+            ),
+        ),
         env=[
             # Django envs
             client.V1EnvVar(
@@ -125,9 +138,9 @@ def _construct_job(temp_path: str, alg_task: AlgorithmTask):
             # Extra envs
             client.V1EnvVar(name='JOB_NAME', value=job_name),
             client.V1EnvVar(name='CONTAINER_NAME', value=main_container_name),
-            client.V1EnvVar(name='TASK_ID', value=f'"{alg_task.pk}"'),
+            client.V1EnvVar(name='TASK_ID', value=str(alg_task.pk)),
             client.V1EnvVar(name='TEMP_DIR', value=temp_path),
-        ]
+        ],
         # resources=client.V1ResourceRequirements(limits={'nvidia.com/gpu': 1}),
     )
 
@@ -136,7 +149,9 @@ def _construct_job(temp_path: str, alg_task: AlgorithmTask):
         metadata=client.V1ObjectMeta(name=job_name),
         spec=client.V1PodSpec(
             restart_policy="Never",
-            containers=[main_container, monitor_container],
+            # Monitor container must be defined first, so the post_start lifecycle hook
+            # delays the main container from starting
+            containers=[monitor_container, main_container],
             volumes=[volume],
             service_account_name='job-robot',
             # automount_service_account_token=False,
