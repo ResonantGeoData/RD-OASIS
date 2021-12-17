@@ -1,7 +1,8 @@
 from pathlib import Path
-import tempfile
-import re
 import os
+import re
+import shlex
+import tempfile
 
 import celery
 from celery.utils.log import get_task_logger
@@ -40,7 +41,7 @@ class ManagedK8sTask(celery.Task):
 
         # Define container with volume mount
         image_id = self.algorithm_task.algorithm.docker_image.image_id
-        args = self.algorithm_task.algorithm.command.split()
+        args = shlex.split(self.algorithm_task.algorithm.command)
         main_container_name = re.sub(r'[^a-zA-Z\d-]', '-', image_id.lower())
         main_container = client.V1Container(
             name=main_container_name,
