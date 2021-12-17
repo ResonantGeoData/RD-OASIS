@@ -65,11 +65,8 @@ class ManagedK8sTask(celery.Task):
                 ),
             ),
             env=[
-                # Django envs
-                client.V1EnvVar(
-                    name='DJANGO_CONFIGURATION',
-                    value='DevelopmentConfiguration',
-                ),
+                # Modified django envs
+                # TODO: Evaluate these for use in AWS cluster
                 client.V1EnvVar(
                     name='DJANGO_DATABASE_URL',
                     value='postgres://postgres:postgres@host.minikube.internal:5432/django',
@@ -81,6 +78,12 @@ class ManagedK8sTask(celery.Task):
                 client.V1EnvVar(
                     name='DJANGO_MINIO_STORAGE_ENDPOINT',
                     value='host.minikube.internal:9000',
+                ),
+                #
+                # Remain the same
+                client.V1EnvVar(
+                    name='DJANGO_CONFIGURATION',
+                    value=os.environ['DJANGO_CONFIGURATION'],
                 ),
                 client.V1EnvVar(
                     name='DJANGO_MINIO_STORAGE_ACCESS_KEY',
