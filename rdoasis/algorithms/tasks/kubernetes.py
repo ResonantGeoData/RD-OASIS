@@ -36,7 +36,7 @@ class ManagedK8sTask(celery.Task):
             empty_dir=client.V1EmptyDirVolumeSource(),
         )
 
-        job_name = 'test'
+        job_name = f'algorithm-{self.algorithm.pk}-task-{self.algorithm_task.pk}'
         temp_path = Path(tempfile.mkdtemp())
 
         # Define container with volume mount
@@ -121,7 +121,7 @@ class ManagedK8sTask(celery.Task):
         return client.V1Job(
             api_version="batch/v1",
             kind="Job",
-            metadata=client.V1ObjectMeta(name="test"),
+            metadata=client.V1ObjectMeta(name=job_name),
             spec=client.V1JobSpec(
                 template=template,
                 backoff_limit=0,
