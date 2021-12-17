@@ -56,23 +56,24 @@ class KubernetesContainerMonitor:
     ) -> None:
         self.job_name = job_name
         self.container_name = container_name
-        self.task_id = task_id if isinstance(task_id, int) else int(task_id)
-        self.temp_dir = Path(temp_dir)
 
-        # Derived variables
+        # Fetch task
+        self.task_id = task_id if isinstance(task_id, int) else int(task_id)
         self.algorithm_task: AlgorithmTask = AlgorithmTask.objects.select_related(
             'algorithm', 'input_dataset', 'output_dataset'
         ).get(pk=self.task_id)
         self.algorithm: Algorithm = self.algorithm_task.algorithm
 
+        # Setup paths
+        self.temp_dir = Path(temp_dir)
+        self.input_dir = self.temp_dir / 'input'
+        self.output_dir = self.temp_dir / 'output'
+
         # Fetch pod
         self.pod_name = self.get_main_pod_name()
 
     def ensure_directories(self):
-        self.input_dir = self.temp_dir / 'input'
         self.input_dir.mkdir(parents=True, exist_ok=True)
-
-        self.output_dir = self.temp_dir / 'output'
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def download_input_dataset(self):

@@ -46,15 +46,15 @@ class ManagedK8sTask(celery.Task):
             name=main_container_name,
             image=image_id,
             args=args,
-            volume_mounts=[client.V1VolumeMount(name='task-data', mount_path=temp_path)],
-            working_dir=temp_path,
+            volume_mounts=[client.V1VolumeMount(name='task-data', mount_path=str(temp_path))],
+            working_dir=str(temp_path),
             # resources=client.V1ResourceRequirements(limits={'nvidia.com/gpu': 1}),
         )
 
         monitor_container = client.V1Container(
             name=f'{main_container_name}--monitor',
             image='oasis-sidecar',
-            volume_mounts=[client.V1VolumeMount(name='task-data', mount_path=temp_path)],
+            volume_mounts=[client.V1VolumeMount(name='task-data', mount_path=str(temp_path))],
             image_pull_policy='Never',
             lifecycle=client.V1Lifecycle(
                 post_start=client.V1Handler(
@@ -98,7 +98,7 @@ class ManagedK8sTask(celery.Task):
                 client.V1EnvVar(name='JOB_NAME', value=job_name),
                 client.V1EnvVar(name='CONTAINER_NAME', value=main_container_name),
                 client.V1EnvVar(name='TASK_ID', value=str(self.algorithm_task.pk)),
-                client.V1EnvVar(name='TEMP_DIR', value=temp_path),
+                client.V1EnvVar(name='TEMP_DIR', value=str(temp_path)),
             ],
             # resources=client.V1ResourceRequirements(limits={'nvidia.com/gpu': 1}),
         )
