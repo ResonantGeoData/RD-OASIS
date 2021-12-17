@@ -1,7 +1,7 @@
 from pathlib import Path
 import tempfile
-from typing import List
 import re
+import os
 
 import celery
 from celery.utils.log import get_task_logger
@@ -14,54 +14,6 @@ logger = get_task_logger(__name__)
 
 
 class ManagedK8sTask(ManagedTask):
-    def create_k8s_volume(self):
-        """Create a volume before directories are created."""
-        from kubernetes import config, client
-
-        # Load config from within k8s cluster
-        config.load_incluster_config()
-
-        coreapi = client.CoreV1Api()
-        coreapi.create_persistent_volume(
-            client.V1PersistentVolume(
-                spec=client.V1PersistentVolumeSpec(
-                    host_path=client.V1HostPathVolumeSource(
-                        path=str(self.root_dir), type='DirectoryOrCreate'
-                    ),
-                    access_modes=['ReadWriteOnce'],
-                    capacity={'storage': '5Gi'},
-                ),
-                metadata=client.V1ObjectMeta(name='task-data-volume'),
-            )
-        )
-
-    def delete_k8s_volume(self):
-        """Delete a volume after job is finished."""
-        from kubernetes import config, client
-
-        # Load config from within k8s cluster
-        config.load_incluster_config()
-
-        coreapi = client.CoreV1Api()
-        coreapi.delete_persistent_volume(name='task-data-volume')
-
-    def _generate_directories(self):
-        """Generate paths before creating them."""
-        # Create root dir
-        self.root_dir = Path(tempfile.mkdtemp())
-
-        # Generate input and output dir
-        self.input_dir = self.root_dir / 'input'
-        self.output_dir = self.root_dir / 'output'
-
-    def _make_directories(self):
-        """Make directories after volume mount."""
-
-        # TODO: Currently fails, as there's no way to mount he newly
-        # created persistent volume into this pod
-        self.input_dir.mkdir()
-        self.output_dir.mkdir()
-
     def _setup(self, **kwargs):
         # Set algorithm task and update status
         self.algorithm_task: AlgorithmTask = AlgorithmTask.objects.select_related(
@@ -74,43 +26,59 @@ class ManagedK8sTask(ManagedTask):
         self.algorithm: Algorithm = self.algorithm_task.algorithm
 
         # Generate directory names
-        self._generate_directories()
-
-        # Create volume at self.root_dir
-        self.create_k8s_volume()
+        # self._generate_directories()
+        self._create_directories()
 
         # Ensure necessary files and directories exist
-        self._make_directories()
+        # self._make_directories()
 
         # Download input
-        self._download_input_dataset()
+        # self._download_input_dataset()
 
-    def on_failure(self, *args, **kwargs):
-        res = super().on_failure(*args, **kwargs)
+    def _create_directories(self):
+        # Create root dir
+        self.root_dir = Path(tempfile.mkdtemp())
 
-        self.delete_k8s_volume()
-        return res
+        # Create input and output dir
+        self.input_dir = self.root_dir / 'input'
+        self.output_dir = self.root_dir / 'output'
 
-    def on_success(self, *args, **kwargs):
-        res = super().on_success(*args, **kwargs)
+    def _cleanup(self):
+        """Do nothing."""
+        pass
 
-        self.delete_k8s_volume()
-        return res
+    def _run_algorithm_task_k8s(self, *args, **kwargs):
+        # Import kubernetes here so django can import task
+        from kubernetes import config, client
+
+        # Load config from outside of k8s cluster
+        config.load_kube_config()
+
+        api = client.BatchV1Api()
+        job: client.V1Job = _construct_job(str(self.root_dir), self.algorithm_task)
+        job: client.V1Job = api.create_namespaced_job(namespace='default', body=job)
 
 
-def _construct_job(temp_path: str, image_id: str, args: List[str]):
-    from kubernetes import client
+def _construct_job(temp_path: str, alg_task: AlgorithmTask):
+    from kubernetes import client, config
+
+    # Load config from outside of k8s cluster
+    config.load_kube_config()
 
     # Define volume
     volume = client.V1Volume(
         name='task-data',
-        host_path=client.V1HostPathVolumeSource(path=temp_path, type='DirectoryOrCreate'),
+        empty_dir=client.V1EmptyDirVolumeSource(),
     )
 
+    pod_name = 'test'
+
     # Define container with volume mount
-    container_name = re.sub(r'[^a-zA-Z\d-]', '-', image_id.lower())
-    container = client.V1Container(
-        name=container_name,
+    image_id = alg_task.algorithm.docker_image.image_id
+    args = alg_task.algorithm.command.split()
+    main_container_name = re.sub(r'[^a-zA-Z\d-]', '-', image_id.lower())
+    main_container = client.V1Container(
+        name=main_container_name,
         image=image_id,
         args=args,
         volume_mounts=[client.V1VolumeMount(name='task-data', mount_path=temp_path)],
@@ -118,18 +86,66 @@ def _construct_job(temp_path: str, image_id: str, args: List[str]):
         # resources=client.V1ResourceRequirements(limits={'nvidia.com/gpu': 1}),
     )
 
+    monitor_container = client.V1Container(
+        name=f'{main_container_name}--monitor',
+        image='oasis-sidecar',
+        volume_mounts=[client.V1VolumeMount(name='task-data', mount_path=temp_path)],
+        image_pull_policy='Never',
+        env=[
+            # Django envs
+            client.V1EnvVar(
+                name='DJANGO_CONFIGURATION',
+                value='DevelopmentConfiguration',
+            ),
+            client.V1EnvVar(
+                name='DJANGO_DATABASE_URL',
+                value='postgres://postgres:postgres@host.minikube.internal:5432/django',
+            ),
+            client.V1EnvVar(
+                name='DJANGO_CELERY_BROKER_URL',
+                value='amqp://host.minikube.internal:5672/',
+            ),
+            client.V1EnvVar(
+                name='DJANGO_MINIO_STORAGE_ENDPOINT',
+                value='host.minikube.internal:9000',
+            ),
+            client.V1EnvVar(
+                name='DJANGO_MINIO_STORAGE_ACCESS_KEY',
+                value=os.environ['DJANGO_MINIO_STORAGE_ACCESS_KEY'],
+            ),
+            client.V1EnvVar(
+                name='DJANGO_MINIO_STORAGE_SECRET_KEY',
+                value=os.environ['DJANGO_MINIO_STORAGE_SECRET_KEY'],
+            ),
+            client.V1EnvVar(
+                name='DJANGO_STORAGE_BUCKET_NAME',
+                value=os.environ['DJANGO_STORAGE_BUCKET_NAME'],
+            ),
+            #
+            # Extra envs
+            client.V1EnvVar(name='POD_NAME', value=pod_name),
+            client.V1EnvVar(name='CONTAINER_NAME', value=main_container_name),
+            client.V1EnvVar(name='TASK_ID', value=f'"{alg_task.pk}"'),
+            client.V1EnvVar(name='TEMP_DIR', value=temp_path),
+        ]
+        # resources=client.V1ResourceRequirements(limits={'nvidia.com/gpu': 1}),
+    )
+
     # Define job template
     template = client.V1PodTemplateSpec(
-        metadata=client.V1ObjectMeta(labels={"name": "test"}),
+        # metadata=client.V1ObjectMeta(labels={"name": "test"}),
+        metadata=client.V1ObjectMeta(name=pod_name),
         spec=client.V1PodSpec(
             restart_policy="Never",
-            containers=[container],
+            containers=[main_container, monitor_container],
             volumes=[volume],
+            service_account_name='job-robot',
+            automount_service_account_token=False,
         ),
     )
 
     # Define the job
-    spec = client.V1JobSpec(template=template, ttl_seconds_after_finished=30)
+    spec = client.V1JobSpec(template=template, backoff_limit=0, ttl_seconds_after_finished=30)
 
     # Instantiate and return the job object
     return client.V1Job(
@@ -140,79 +156,16 @@ def _construct_job(temp_path: str, image_id: str, args: List[str]):
     )
 
 
-def _run_algorithm_task_k8s(self: ManagedK8sTask, *args, **kwargs):
-    # Import kubernetes here so django can import task
-    from kubernetes import config, client
+# def _run_algorithm_task_k8s(self: ManagedK8sTask, *args, **kwargs):
+#     # Import kubernetes here so django can import task
+#     from kubernetes import config, client
 
-    # Load config from within k8s cluster
-    config.load_incluster_config()
+#     # Load config from outside of k8s cluster
+#     config.load_kube_config()
 
-    # Below shows how you might access the pod this is running from, to run another container
-    # within this pod
-    # from kubernetes.client.models.v1_pod import V1Pod
-    # this_pod: V1Pod = client.CoreV1Api().read_namespaced_pod(
-    #     name='oasis-worker',
-    #     namespace='default',
-    # )
-
-    api = client.BatchV1Api()
-    job: client.V1Job = _construct_job(
-        str(self.root_dir), self.algorithm.docker_image.image_id, self.algorithm.command.split()
-    )
-    job: client.V1Job = api.create_namespaced_job(namespace='default', body=job)
-
-    while not job.status.active:
-        job: client.V1Job = api.read_namespaced_job_status(name='test', namespace='default')
-
-    # device_requests = []
-    # if self.algorithm.gpu:
-    #     device_requests.append(DeviceRequest(count=-1, capabilities=[['gpu']]))
-
-    # # Instantiate docker client
-    # client = docker.from_env()
-
-    # Get or pull image
-    # image_id = self.docker_image_file_id or self.algorithm.docker_image.image_id
-    # try:
-    #     image = client.images.get(image_id)
-    # except ImageNotFound:
-    #     logger.info(f'Pulling {image_id}. This may take a while...')
-    #     image = client.images.pull(image_id)
-
-    # Run container
-    # try:
-    #     container: Container = client.containers.run(
-    #         image,
-    #         command=self.algorithm.command,
-    #         entrypoint=self.algorithm.entrypoint,
-    #         environment=self.algorithm.environment,
-    #         mounts=mounts,
-    #         device_requests=device_requests,
-    #         working_dir=str(self.root_dir),
-    #         detach=True,
-    #     )
-    # except DockerException as e:
-    #     # Replace null characters with �
-    #     self.algorithm_task.output_log = str(e).replace('\x00', '\uFFFD')
-    #     self.algorithm_task.save()
-    #     return e.status_code
-
-    # Capture live logs
-    # self.algorithm_task.output_log = ''
-    # output_generator = container.logs(stream=True)
-    # for log in output_generator:
-    #     # TODO: Probably inefficient, fix
-
-    #     # Replace null characters with �
-    #     self.algorithm_task.output_log += log.decode('utf-8').replace('\x00', '\uFFFD')
-    #     self.algorithm_task.save(update_fields=['output_log'])
-
-    # # Wait for container to exit and remove
-    # res = container.wait()
-    # container.remove()
-
-    # # Return status code
-    # return res['StatusCode']
+#     api = client.BatchV1Api()
+#     job: client.V1Job = _construct_job(str(self.root_dir), self.algorithm_task)
+#     job: client.V1Job = api.create_namespaced_job(namespace='default', body=job)
 
 
 @celery.shared_task(base=ManagedK8sTask, bind=True)
@@ -226,4 +179,4 @@ def run_algorithm_task_k8s(self: ManagedK8sTask, *args, **kwargs):
     Returns:
         The status code returned from docker.
     """
-    return _run_algorithm_task_k8s(self, *args, **kwargs)
+    return self._run_algorithm_task_k8s(*args, **kwargs)
