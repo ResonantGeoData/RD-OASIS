@@ -6,21 +6,33 @@ from django.core.management.base import BaseCommand
 from kubernetes import client, config
 
 
-config.load_incluster_config()
+try:
+    config.load_incluster_config()
+except config.config_exception.ConfigException:
+    config.load_kube_config()
 
 # Load envs
-POD_NAME = os.getenv('POD_NAME')
+JOB_NAME = os.getenv('JOB_NAME')
 CONTAINER_NAME = os.getenv('CONTAINER_NAME')
 TASK_ID = os.getenv('TASK_ID')
-if {None, '_'} & {POD_NAME, CONTAINER_NAME, TASK_ID}:
+if {None, '_'} & {JOB_NAME, CONTAINER_NAME, TASK_ID}:
     raise Exception('Not all env vars specified.')
 
 
 coreapi = client.CoreV1Api()
+batchapi = client.BatchV1Api
 
 
-def poll_container() -> Tuple[Optional[client.V1ContainerStateTerminated], str]:
-    pod: client.V1Pod = coreapi.read_namespaced_pod_status(name=POD_NAME, namespace='default')
+def get_pod_name() -> str:
+    pods: client.V1PodList = coreapi.list_namespaced_pod(
+        namespace='default', label_selector=f'job-name={JOB_NAME}'
+    )
+    pod = pods.items[0]  # type: ignore
+    return pod.metadata.name
+
+
+def poll_container(pod_name: str) -> Tuple[Optional[client.V1ContainerStateTerminated], str]:
+    pod: client.V1Pod = coreapi.read_namespaced_pod_status(name=pod_name, namespace='default')
 
     log = ''
     termination_state = None
@@ -32,7 +44,9 @@ def poll_container() -> Tuple[Optional[client.V1ContainerStateTerminated], str]:
     except (AttributeError, StopIteration):
         pass
 
-    log = coreapi.read_namespaced_pod_log(name=POD_NAME, namespace='default')
+    log = coreapi.read_namespaced_pod_log(
+        name=pod_name, container=CONTAINER_NAME, namespace='default'
+    )
     return termination_state, log
 
 
@@ -42,8 +56,10 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         log: str = ''
         termination_state = None
+
+        pod_name = get_pod_name()
         while termination_state is None:
-            termination_state, log = poll_container()
+            termination_state, log = poll_container(pod_name)
             time.sleep(1)
 
         # TODO: Write log to task

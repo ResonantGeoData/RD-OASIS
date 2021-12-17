@@ -71,7 +71,7 @@ def _construct_job(temp_path: str, alg_task: AlgorithmTask):
         empty_dir=client.V1EmptyDirVolumeSource(),
     )
 
-    pod_name = 'test'
+    job_name = 'test'
 
     # Define container with volume mount
     image_id = alg_task.algorithm.docker_image.image_id
@@ -123,7 +123,7 @@ def _construct_job(temp_path: str, alg_task: AlgorithmTask):
             ),
             #
             # Extra envs
-            client.V1EnvVar(name='POD_NAME', value=pod_name),
+            client.V1EnvVar(name='JOB_NAME', value=job_name),
             client.V1EnvVar(name='CONTAINER_NAME', value=main_container_name),
             client.V1EnvVar(name='TASK_ID', value=f'"{alg_task.pk}"'),
             client.V1EnvVar(name='TEMP_DIR', value=temp_path),
@@ -133,14 +133,13 @@ def _construct_job(temp_path: str, alg_task: AlgorithmTask):
 
     # Define job template
     template = client.V1PodTemplateSpec(
-        # metadata=client.V1ObjectMeta(labels={"name": "test"}),
-        metadata=client.V1ObjectMeta(name=pod_name),
+        metadata=client.V1ObjectMeta(name=job_name),
         spec=client.V1PodSpec(
             restart_policy="Never",
             containers=[main_container, monitor_container],
             volumes=[volume],
             service_account_name='job-robot',
-            automount_service_account_token=False,
+            # automount_service_account_token=False,
         ),
     )
 
