@@ -1,13 +1,13 @@
-from pathlib import Path
 import os
+from pathlib import Path
 import re
 import shlex
 import tempfile
 
 import celery
 from celery.utils.log import get_task_logger
-from rdoasis.algorithms.models import Algorithm, AlgorithmTask
 
+from rdoasis.algorithms.models import Algorithm, AlgorithmTask
 
 logger = get_task_logger(__name__)
 
@@ -118,7 +118,7 @@ class ManagedK8sTask(celery.Task):
         template = client.V1PodTemplateSpec(
             metadata=client.V1ObjectMeta(name=self.job_name),
             spec=client.V1PodSpec(
-                restart_policy="Never",
+                restart_policy='Never',
                 init_containers=[init_container],
                 containers=[monitor_container, main_container],
                 volumes=[
@@ -133,8 +133,8 @@ class ManagedK8sTask(celery.Task):
 
         # Instantiate and return the job object
         return client.V1Job(
-            api_version="batch/v1",
-            kind="Job",
+            api_version='batch/v1',
+            kind='Job',
             metadata=client.V1ObjectMeta(name=self.job_name),
             spec=client.V1JobSpec(
                 template=template,
@@ -149,7 +149,7 @@ class ManagedK8sTask(celery.Task):
 
     def run_algorithm_task_k8s(self, *args, **kwargs):
         # Import kubernetes here so django can import task
-        from kubernetes import config, client
+        from kubernetes import client, config
 
         # Load config from outside of k8s cluster
         config.load_kube_config()
