@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 import time
-
 from typing import List, Optional, Set, Tuple, Union
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -9,7 +8,6 @@ from kubernetes import client, config
 from rgd.models.file import ChecksumFile
 
 from rdoasis.algorithms.models import Algorithm, AlgorithmTask, Dataset
-
 
 try:
     config.load_incluster_config()
@@ -32,20 +30,17 @@ class KubernetesContainerMonitor:
 
     @staticmethod
     def from_env():
-        JOB_NAME = os.getenv('JOB_NAME', '')
-        CONTAINER_NAME = os.getenv('CONTAINER_NAME', '')
-        TASK_ID = os.getenv('TASK_ID', '')
-        TEMP_DIR = os.getenv('TEMP_DIR', '')
+        env_vars = {
+            'job_name': os.getenv('JOB_NAME', ''),
+            'container_name': os.getenv('CONTAINER_NAME', ''),
+            'task_id': os.getenv('TASK_ID', ''),
+            'temp_dir': os.getenv('TEMP_DIR', ''),
+        }
 
-        if '' in {JOB_NAME, CONTAINER_NAME, TASK_ID, TEMP_DIR}:
+        if '' in env_vars.values():
             raise Exception('Not all env vars specified.')
 
-        return KubernetesContainerMonitor(
-            job_name=JOB_NAME,
-            container_name=CONTAINER_NAME,
-            task_id=TASK_ID,
-            temp_dir=TEMP_DIR,
-        )
+        return KubernetesContainerMonitor(**env_vars)
 
     def __init__(
         self,
