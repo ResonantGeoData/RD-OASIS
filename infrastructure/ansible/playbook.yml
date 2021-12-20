@@ -17,7 +17,7 @@
     # Install project w/ celery requirements
     - name: Copy project
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../"
+        src: "{{ playbook_dir }}/../../"
         dest: /opt/django-project
 
     - name: Install Project
