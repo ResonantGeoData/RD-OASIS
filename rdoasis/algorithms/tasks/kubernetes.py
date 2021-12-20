@@ -39,15 +39,19 @@ class ManagedK8sTask(celery.Task):
         return [
             client.V1EnvVar(
                 name='DJANGO_DATABASE_URL',
-                value='postgres://postgres:postgres@host.minikube.internal:5432/django',
+                value=os.getenv('DJANGO_DATABASE_URL_K8S', os.environ['DJANGO_DATABASE_URL']),
             ),
             client.V1EnvVar(
                 name='DJANGO_CELERY_BROKER_URL',
-                value='amqp://host.minikube.internal:5672/',
+                value=os.getenv(
+                    'DJANGO_CELERY_BROKER_URL_K8S', os.environ['DJANGO_CELERY_BROKER_URL']
+                ),
             ),
             client.V1EnvVar(
                 name='DJANGO_MINIO_STORAGE_ENDPOINT',
-                value='host.minikube.internal:9000',
+                value=os.getenv(
+                    'DJANGO_MINIO_STORAGE_ENDPOINT_K8S', os.environ['DJANGO_MINIO_STORAGE_ENDPOINT']
+                ),
             ),
             #
             # Remain the same
