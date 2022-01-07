@@ -65,12 +65,12 @@ def test_rest_dataset_tree(dataset, checksum_file_factory, admin_api_client):
     folder_a = [file2, file3] + folder_b
 
     known_size_a = sum([f.size for f in folder_a if f.size is not None])
-    a_created = min([file.created for file in folder_a]).isoformat()
-    a_modified = max([file.modified for file in folder_a]).isoformat()
+    a_created = min([file.created for file in folder_a]).isoformat().replace('+00:00', 'Z')
+    a_modified = max([file.modified for file in folder_a]).isoformat().replace('+00:00', 'Z')
 
     known_size_b = sum([f.size for f in folder_b if f.size is not None])
-    b_created = min([file.created for file in folder_b]).isoformat()
-    b_modified = max([file.modified for file in folder_b]).isoformat()
+    b_created = min([file.created for file in folder_b]).isoformat().replace('+00:00', 'Z')
+    b_modified = max([file.modified for file in folder_b]).isoformat().replace('+00:00', 'Z')
 
     # Check top level response
     r = admin_api_client.get(f'/api/datasets/{dataset.id}/tree/')
@@ -79,7 +79,7 @@ def test_rest_dataset_tree(dataset, checksum_file_factory, admin_api_client):
         'a': {
             'known_size': known_size_a,
             'num_files': len(folder_a),
-            'num_url_files': 1,
+            'num_url_files': 0,
             'created': a_created,
             'modified': a_modified,
         }
@@ -98,7 +98,7 @@ def test_rest_dataset_tree(dataset, checksum_file_factory, admin_api_client):
         'b': {
             'known_size': known_size_b,
             'num_files': len(folder_b),
-            'num_url_files': 1,
+            'num_url_files': 0,
             'created': b_created,
             'modified': b_modified,
         }
