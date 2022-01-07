@@ -16,9 +16,17 @@
 
     # Install project w/ celery requirements
     - name: Copy project
-      ansible.builtin.copy:
+      synchronize:
         src: "{{ playbook_dir }}/../../"
         dest: /opt/django-project
+        rsync_opts:
+          - --include=manage.py
+          - --include=setup.py
+          - --include=rdoasis
+
+    - name: Install Project requirements
+      apt:
+        name: libpq-dev
 
     - name: Install Project
-      ansible.builtin.command: pip3 install /opt/django-project[worker]
+      ansible.builtin.command: pip3 install --find-links https://girder.github.io/large_image_wheels /opt/django-project[worker]
