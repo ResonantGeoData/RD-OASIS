@@ -58,6 +58,7 @@ setup(
         'django-composed-configuration[prod]',
         'django-s3-file-field[boto3]',
         'gunicorn',
+        'boto3',
         # RGD
         'django-rgd[configuration]>=0.2.6.dev10',
         'django-rgd-imagery>=0.2.6.dev10',
@@ -70,6 +71,7 @@ setup(
             'django-s3-file-field[minio]',
             'ipython',
             'tox',
+            'boto3-stubs[eks]',
         ],
         'worker': [
             'django-rgd-imagery[worker]>=0.2.6.dev10',

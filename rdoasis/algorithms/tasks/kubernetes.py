@@ -4,12 +4,63 @@ import re
 import shlex
 import tempfile
 
+import boto3
 import celery
 from celery.utils.log import get_task_logger
+from django.conf import settings
 
 from rdoasis.algorithms.models import Algorithm, AlgorithmTask
 
 logger = get_task_logger(__name__)
+
+
+def generate_kube_config_dict():
+    # Will read AWS env vars
+    client = boto3.client('eks')
+
+    cluster = client.describe_cluster(name=settings.K8S_CLUSTER_NAME)
+    certAuthData = cluster['cluster']['certificateAuthority']['data']  # type: ignore
+    return {
+        'apiVersion': 'v1',
+        'clusters': [
+            {
+                'name': 'kubernetes',
+                'cluster': {
+                    'server': cluster['cluster']['endpoint'],  # type: ignore
+                    'certificate-authority-data': certAuthData,
+                },
+            }
+        ],
+        'contexts': [
+            {
+                'name': 'aws',
+                'context': {
+                    'cluster': 'kubernetes',
+                    'user': 'aws',
+                },
+            }
+        ],
+        'current-context': 'aws',
+        'kind': 'Config',
+        'preferences': {},
+        'users': [
+            {
+                'name': 'aws',
+                'user': {
+                    'exec': {
+                        'apiVersion': 'client.authentication.k8s.io/v1alpha1',
+                        'command': 'aws',
+                        'args': [
+                            'eks',
+                            'get-token',
+                            '--cluster-name',
+                            cluster['cluster']['name'],  # type: ignore
+                        ],
+                    }
+                },
+            }
+        ],
+    }
 
 
 class ManagedK8sTask(celery.Task):
@@ -30,13 +81,14 @@ class ManagedK8sTask(celery.Task):
         self.image_id = self.algorithm_task.algorithm.docker_image.image_id
         self.main_container_name = re.sub(r'[^a-zA-Z\d-]', '-', self.image_id.lower())
 
-    def _sidecar_container_env_vars(self):
-        from kubernetes import client, config
+        # Generate kubernetes config
+        self.kube_config_dict = generate_kube_config_dict()
 
-        # Load config from outside of k8s cluster
-        config.load_kube_config()
+    def _sidecar_container_env_vars(self):
+        from kubernetes import client
 
         return [
+            # The following values could differ depending on deployment
             client.V1EnvVar(
                 name='DJANGO_DATABASE_URL',
                 value=os.getenv('DJANGO_DATABASE_URL_K8S', os.environ['DJANGO_DATABASE_URL']),
@@ -80,10 +132,7 @@ class ManagedK8sTask(celery.Task):
         ]
 
     def _construct_job(self):
-        from kubernetes import client, config
-
-        # Load config from outside of k8s cluster
-        config.load_kube_config()
+        from kubernetes import client
 
         # Define volume mount
         volume_mount = client.V1VolumeMount(name='task-data', mount_path=str(self.temp_path))
@@ -101,9 +150,8 @@ class ManagedK8sTask(celery.Task):
         # Container that will initialize the pod emptyDir with data
         init_container = client.V1Container(
             name=f'{self.main_container_name}--init',
-            image='oasis-sidecar',
+            image='jacobnesbittkitware/oasis:oasis-sidecar',
             volume_mounts=[volume_mount],
-            image_pull_policy='Never',
             command=['/opt/django-project/manage.py'],
             args=['setup_container_k8s'],
             env=self._sidecar_container_env_vars(),
@@ -112,9 +160,8 @@ class ManagedK8sTask(celery.Task):
         # Container that will monitor the main container and upload the resulting logs & data
         monitor_container = client.V1Container(
             name=f'{self.main_container_name}--monitor',
-            image='oasis-sidecar',
+            image='jacobnesbittkitware/oasis:oasis-sidecar',
             volume_mounts=[volume_mount],
-            image_pull_policy='Never',
             env=self._sidecar_container_env_vars(),
         )
 
@@ -156,7 +203,8 @@ class ManagedK8sTask(celery.Task):
         from kubernetes import client, config
 
         # Load config from outside of k8s cluster
-        config.load_kube_config()
+        # config.load_kube_config()
+        config.load_kube_config_from_dict(self.kube_config_dict)
 
         api = client.BatchV1Api()
         job: client.V1Job = self._construct_job()

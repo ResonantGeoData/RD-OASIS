@@ -53,7 +53,7 @@ class TestingConfiguration(RdoasisMixin, TestingBaseConfiguration):
 
 
 class ProductionConfiguration(RdoasisMixin, ProductionBaseConfiguration):
-    pass
+    K8S_CLUSTER_NAME = values.Value(environ_required=True)
 
 
 class HerokuProductionConfiguration(RdoasisMixin, HerokuProductionBaseConfiguration):
