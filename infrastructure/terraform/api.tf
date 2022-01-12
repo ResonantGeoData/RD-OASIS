@@ -13,9 +13,9 @@ module "api" {
 
   # heroku_web_dyno_size    = "standard-1x"
   # heroku_worker_dyno_size = "standard-1x"
-  #   heroku_postgresql_plan  = "standard-0"
-  #   heroku_cloudamqp_plan   = "tiger"
-  #   heroku_papertrail_plan  = "volmar"
+  # heroku_postgresql_plan  = "standard-0"
+  # heroku_cloudamqp_plan   = "tiger"
+  # heroku_papertrail_plan  = "volmar"
 
   heroku_worker_dyno_quantity = 1
   heroku_web_dyno_quantity    = 1
@@ -24,9 +24,9 @@ module "api" {
   django_cors_origin_whitelist = ["https://gui.rgdoasis.com"]
   #   django_cors_origin_regex_whitelist = ["^https:\\/\\/[0-9a-z\\-]+--gui-dandiarchive-org\\.netlify\\.app$"]
 
-  #   additional_django_vars = {
-  #     DJANGO_CONFIGURATION                         = "HerokuProductionConfiguration"
-  #   }
+  additional_django_vars = {
+    DJANGO_K8S_CLUSTER_NAME = data.aws_eks_cluster.cluster.name
+  }
 }
 
 # The policy needed for dispatching jobs to the EKS cluster
