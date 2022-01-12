@@ -57,6 +57,8 @@ class ProductionConfiguration(RdoasisMixin, ProductionBaseConfiguration):
 
 
 class HerokuProductionConfiguration(RdoasisMixin, HerokuProductionBaseConfiguration):
+    K8S_CLUSTER_NAME = values.Value(environ_required=True)
+
     # Use different env var names (with no DJANGO_ prefix) for services that Heroku auto-injects
     DATABASES = values.DatabaseURLValue(
         environ_name='DATABASE_URL',
