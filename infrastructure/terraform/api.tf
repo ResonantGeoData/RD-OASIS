@@ -11,8 +11,8 @@ module "api" {
   route53_zone_id  = aws_route53_zone.oasis.zone_id
   subdomain_name   = "api"
 
-  heroku_web_dyno_size = "standard-1x"
-  #   heroku_worker_dyno_size = "standard-1x"
+  # heroku_web_dyno_size    = "standard-1x"
+  # heroku_worker_dyno_size = "standard-1x"
   #   heroku_postgresql_plan  = "standard-0"
   #   heroku_cloudamqp_plan   = "tiger"
   #   heroku_papertrail_plan  = "volmar"
