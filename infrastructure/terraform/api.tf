@@ -34,7 +34,8 @@ data "aws_iam_policy_document" "eks_api_access" {
   statement {
     effect    = "Allow"
     actions   = ["eks:DescribeCluster"]
-    resources = ["arn:aws:eks:::cluster/*"]
+    resources = ["arn:aws:eks:${var.region}:287240249204:cluster/*"]
+
   }
 }
 
