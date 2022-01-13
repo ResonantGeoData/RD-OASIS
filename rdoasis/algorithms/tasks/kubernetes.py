@@ -87,15 +87,13 @@ class ManagedK8sTask(celery.Task):
     def _sidecar_container_env_vars(self):
         from kubernetes import client
 
-        print('---', os.getenv('DATABASE_URL'))
-
         return [
             # The following values could differ depending on deployment
             client.V1EnvVar(
                 name='DJANGO_DATABASE_URL',
                 value=os.getenv(
                     'DATABASE_URL',  # Try with heroku val first
-                    os.getenv('DJANGO_DATABASE_URL_K8S', os.environ['DJANGO_DATABASE_URL']),
+                    os.getenv('DJANGO_DATABASE_URL_K8S', os.getenv('DJANGO_DATABASE_URL')),
                 ),
             ),
             client.V1EnvVar(
