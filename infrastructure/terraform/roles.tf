@@ -17,6 +17,13 @@ resource "kubernetes_role" "job_robot" {
     resources  = ["pods", "pods/status", "pods/log"]
     verbs      = ["get", "list", "watch"]
   }
+
+  rule {
+    api_groups = ["batch", "extensions"]
+    resources  = ["jobs"]
+    verbs      = ["create", "delete"]
+
+  }
 }
 
 # The rolebinding between the service account and the role
