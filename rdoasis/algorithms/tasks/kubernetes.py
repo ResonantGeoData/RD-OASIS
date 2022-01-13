@@ -63,6 +63,16 @@ def generate_kube_config_dict():
     }
 
 
+def dev_prod_env_var(dev: str, prod: str):
+    """Return the dev/prod env var depending on the current config."""
+    from kubernetes import client
+
+    if settings.CONFIGURATION == 'rdoasis.settings.DevelopmentConfiguration':
+        return client.V1EnvVar(name=dev, value=os.environ[dev])
+
+    return client.V1EnvVar(name=prod, value=os.environ[prod])
+
+
 class ManagedK8sTask(celery.Task):
     def _setup(self, **kwargs):
         # Set algorithm task and update status
@@ -87,47 +97,33 @@ class ManagedK8sTask(celery.Task):
     def _sidecar_container_env_vars(self):
         from kubernetes import client
 
+        db = settings.DATABASES['default']
+        db_url = f'postgres://{db["USER"]}:{db["PASSWORD"]}@{db["HOST"]}:{db["PORT"]}/{db["NAME"]}'
         return [
-            # The following values could differ depending on deployment
-            client.V1EnvVar(
-                name='DJANGO_DATABASE_URL',
-                value=os.getenv(
-                    'DATABASE_URL',  # Try with heroku val first
-                    os.getenv('DJANGO_DATABASE_URL_K8S', os.getenv('DJANGO_DATABASE_URL')),
-                ),
-            ),
-            client.V1EnvVar(
-                name='DJANGO_CELERY_BROKER_URL',
-                value=os.getenv(
-                    'DJANGO_CELERY_BROKER_URL_K8S', os.environ['DJANGO_CELERY_BROKER_URL']
-                ),
-            ),
-            client.V1EnvVar(
-                name='DJANGO_MINIO_STORAGE_ENDPOINT',
-                value=os.getenv(
-                    'DJANGO_MINIO_STORAGE_ENDPOINT_K8S', os.environ['DJANGO_MINIO_STORAGE_ENDPOINT']
-                ),
-            ),
-            #
             # Set
             client.V1EnvVar(
                 name='DJANGO_CONFIGURATION',
                 value='KubernetesProductionConfiguration',
             ),
             #
+            # The following values could differ depending on deployment
+            client.V1EnvVar(
+                name='DJANGO_DATABASE_URL',
+                value=db_url,
+            ),
+            client.V1EnvVar(
+                name='DJANGO_MINIO_STORAGE_ENDPOINT',
+                value=os.getenv('DJANGO_MINIO_STORAGE_ENDPOINT', ''),  # Ignore if not present
+            ),
+            #
             # Remain the same
-            client.V1EnvVar(
-                name='DJANGO_MINIO_STORAGE_ACCESS_KEY',
-                value=os.environ['DJANGO_MINIO_STORAGE_ACCESS_KEY'],
-            ),
-            client.V1EnvVar(
-                name='DJANGO_MINIO_STORAGE_SECRET_KEY',
-                value=os.environ['DJANGO_MINIO_STORAGE_SECRET_KEY'],
-            ),
+            client.V1EnvVar(name='DJANGO_CELERY_BROKER_URL', value=settings.CELERY_BROKER_URL),
             client.V1EnvVar(
                 name='DJANGO_STORAGE_BUCKET_NAME',
                 value=os.environ['DJANGO_STORAGE_BUCKET_NAME'],
             ),
+            dev_prod_env_var('DJANGO_MINIO_STORAGE_ACCESS_KEY', 'AWS_ACCESS_KEY_ID'),
+            dev_prod_env_var('DJANGO_MINIO_STORAGE_SECRET_KEY', 'AWS_SECRET_ACCESS_KEY'),
             #
             # Extra envs
             client.V1EnvVar(name='JOB_NAME', value=self.job_name),
