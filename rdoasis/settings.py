@@ -45,6 +45,7 @@ class RdoasisMixin(ResonantGeoDataBaseMixin, ConfigMixin):
 
 
 class DevelopmentConfiguration(RdoasisMixin, DevelopmentBaseConfiguration):
+    # K8S_CLUSTER_NAME = values.Value(environ_required=True)
     pass
 
 
@@ -54,6 +55,10 @@ class TestingConfiguration(RdoasisMixin, TestingBaseConfiguration):
 
 class ProductionConfiguration(RdoasisMixin, ProductionBaseConfiguration):
     K8S_CLUSTER_NAME = values.Value(environ_required=True)
+
+
+class KubernetesProductionConfiguration(RdoasisMixin, ProductionBaseConfiguration):
+    pass
 
 
 class HerokuProductionConfiguration(RdoasisMixin, HerokuProductionBaseConfiguration):

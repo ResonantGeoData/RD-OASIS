@@ -87,7 +87,7 @@ class ManagedK8sTask(celery.Task):
     def _sidecar_container_env_vars(self):
         from kubernetes import client
 
-        print(os.environ)
+        print('---', os.getenv('DATABASE_URL'))
 
         return [
             # The following values could differ depending on deployment
@@ -111,11 +111,13 @@ class ManagedK8sTask(celery.Task):
                 ),
             ),
             #
-            # Remain the same
+            # Set
             client.V1EnvVar(
                 name='DJANGO_CONFIGURATION',
-                value=os.environ['DJANGO_CONFIGURATION'],
+                value='KubernetesProductionConfiguration',
             ),
+            #
+            # Remain the same
             client.V1EnvVar(
                 name='DJANGO_MINIO_STORAGE_ACCESS_KEY',
                 value=os.environ['DJANGO_MINIO_STORAGE_ACCESS_KEY'],
