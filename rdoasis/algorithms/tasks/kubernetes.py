@@ -87,6 +87,8 @@ class ManagedK8sTask(celery.Task):
     def _sidecar_container_env_vars(self):
         from kubernetes import client
 
+        print(os.environ)
+
         return [
             # The following values could differ depending on deployment
             client.V1EnvVar(
