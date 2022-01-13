@@ -45,3 +45,15 @@ resource "kubernetes_role_binding" "job_robot" {
     api_group = "rbac.authorization.k8s.io"
   }
 }
+
+
+resource "kubernetes_config_map" "aws_auth_configmap" {
+  metadata {
+    name      = "aws-auth"
+    namespace = "kube-system"
+  }
+
+  data = {
+    config = file("${path.module}/config-map.yml")
+  }
+}

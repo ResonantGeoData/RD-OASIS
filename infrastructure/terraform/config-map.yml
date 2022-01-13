@@ -1,0 +1,7 @@
+apiVersion: v1
+data:
+  mapUsers: |
+    - userarn: arn:aws:iam::287240249204:user/jacob.nesbitt@kitware.com
+      username: admin
+      groups:
+        - system:masters
