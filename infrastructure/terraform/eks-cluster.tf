@@ -26,6 +26,11 @@ module "eks" {
       userarn : "arn:aws:iam::287240249204:user/jacob.nesbitt@kitware.com",
       username : "admin",
       groups : ["system:masters"],
+    },
+    {
+      userarn : "arn:aws:iam::287240249204:user/tf-robot",
+      username : "robot-admin",
+      groups : ["system:masters"],
     }
   ]
 
