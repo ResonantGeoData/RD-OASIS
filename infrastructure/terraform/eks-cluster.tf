@@ -18,8 +18,16 @@ module "eks" {
   cluster_name    = local.cluster_name
   cluster_version = "1.20"
   subnets         = module.vpc.private_subnets
+  vpc_id          = module.vpc.vpc_id
 
-  vpc_id = module.vpc.vpc_id
+  # Add users to configmap
+  map_users = [
+    {
+      userarn : "arn:aws:iam::287240249204:user/jacob.nesbitt@kitware.com",
+      username : "admin",
+      groups : ["system:masters"],
+    }
+  ]
 
   workers_group_defaults = {
     root_volume_type = "gp2"
