@@ -19,33 +19,35 @@ def generate_kube_config_dict():
     client = boto3.client('eks')
 
     cluster = client.describe_cluster(name=settings.K8S_CLUSTER_NAME)
-    certAuthData = cluster['cluster']['certificateAuthority']['data']  # type: ignore
+    cluster_arn = cluster['cluster']['arn']  # type: ignore
+    cert_auth_data = cluster['cluster']['certificateAuthority']['data']  # type: ignore
+    cluster_endpoint = cluster['cluster']['endpoint']  # type: ignore
     return {
         'apiVersion': 'v1',
         'clusters': [
             {
-                'name': 'kubernetes',
+                'name': cluster_arn,
                 'cluster': {
-                    'server': cluster['cluster']['endpoint'],  # type: ignore
-                    'certificate-authority-data': certAuthData,
+                    'server': cluster_endpoint,
+                    'certificate-authority-data': cert_auth_data,
                 },
             }
         ],
         'contexts': [
             {
-                'name': 'aws',
+                'name': cluster_arn,
                 'context': {
-                    'cluster': 'kubernetes',
-                    'user': 'aws',
+                    'cluster': cluster_arn,
+                    'user': cluster_arn,
                 },
             }
         ],
-        'current-context': 'aws',
+        'current-context': cluster_arn,
         'kind': 'Config',
         'preferences': {},
         'users': [
             {
-                'name': 'aws',
+                'name': cluster_arn,
                 'user': {
                     'exec': {
                         'apiVersion': 'client.authentication.k8s.io/v1alpha1',
