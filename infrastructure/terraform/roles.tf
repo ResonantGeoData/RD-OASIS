@@ -2,6 +2,10 @@
 resource "kubernetes_service_account" "job_robot" {
   metadata {
     name = "job-robot"
+    annotations = {
+      # eks.amazonaws.com/role-arn: "arn:aws:iam::ACCOUNT_ID:role/IAM_ROLE_NAME"
+      "eks.amazonaws.com/role-arn" : module.eks.cluster_iam_role_arn
+    }
   }
 }
 
