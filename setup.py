@@ -82,6 +82,7 @@ setup(
         ],
         'k8s': [
             'kubernetes',
+            'awscli',
         ],
     },
 )

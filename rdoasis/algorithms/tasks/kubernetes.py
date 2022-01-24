@@ -49,6 +49,7 @@ def generate_kube_config_dict():
             {
                 'name': cluster_arn,
                 'user': {
+                    # Requires that awscli is installed
                     'exec': {
                         'apiVersion': 'client.authentication.k8s.io/v1alpha1',
                         'command': 'aws',
