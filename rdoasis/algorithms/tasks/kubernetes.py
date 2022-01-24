@@ -159,6 +159,7 @@ class ManagedK8sTask(celery.Task):
             command=['/opt/django-project/manage.py'],
             args=['setup_container_k8s'],
             env=self._sidecar_container_env_vars(),
+            image_pull_policy='Always',
         )
 
         # Container that will monitor the main container and upload the resulting logs & data
@@ -167,6 +168,7 @@ class ManagedK8sTask(celery.Task):
             image='jacobnesbittkitware/oasis:oasis-sidecar',
             volume_mounts=[volume_mount],
             env=self._sidecar_container_env_vars(),
+            image_pull_policy='Always',
         )
 
         # Define job template
