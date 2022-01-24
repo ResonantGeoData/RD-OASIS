@@ -28,10 +28,10 @@ module "eks" {
       groups : ["system:masters"],
     },
     {
-      userarn : "arn:aws:iam::287240249204:user/tf-robot",
+      userarn : "arn:aws:iam::287240249204:user/${module.api.heroku_iam_user_id}",
       username : "robot-admin",
       groups : ["system:masters"],
-    }
+    },
   ]
 
   workers_group_defaults = {
