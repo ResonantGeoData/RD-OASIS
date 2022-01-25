@@ -66,16 +66,6 @@ def generate_kube_config_dict():
     }
 
 
-def dev_prod_env_var(dev: str, prod: str):
-    """Return the dev/prod env var depending on the current config."""
-    from kubernetes import client
-
-    if settings.CONFIGURATION == 'rdoasis.settings.DevelopmentConfiguration':
-        return client.V1EnvVar(name=dev, value=os.environ[dev])
-
-    return client.V1EnvVar(name=prod, value=os.environ[prod])
-
-
 class ManagedK8sTask(celery.Task):
     def _setup(self, **kwargs):
         # Set algorithm task and update status
