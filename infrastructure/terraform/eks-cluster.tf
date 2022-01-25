@@ -5,11 +5,10 @@ data "aws_ami" "node_ami" {
 }
 
 resource "aws_launch_template" "node_launch_template" {
-  name_prefix   = "oasis_worker_"
-  image_id      = data.aws_ami.node_ami.id
-  instance_type = "g4dn.xlarge"
-  # security_group_names = [aws_security_group.node_security_group.name]
-  security_group_names = [aws_security_group.worker_group_mgmt_two.id]
+  name_prefix          = "oasis_worker_"
+  image_id             = data.aws_ami.node_ami.id
+  instance_type        = "g4dn.xlarge"
+  security_group_names = [aws_security_group.worker_security_group.id]
 }
 
 module "eks" {
@@ -40,9 +39,9 @@ module "eks" {
 
   worker_groups = [
     {
-      name                          = "worker-group-2"
+      name                          = "worker-group-GPU"
       instance_type                 = "g4dn.xlarge"
-      additional_security_group_ids = [aws_security_group.worker_group_mgmt_two.id]
+      additional_security_group_ids = [aws_security_group.worker_security_group.id]
       asg_desired_capacity          = 0
     },
   ]
