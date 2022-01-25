@@ -100,10 +100,27 @@ class ManagedK8sTask(celery.Task):
     def _sidecar_container_env_vars(self):
         from kubernetes import client
 
+        # Directly construct URL for correct use in both prod and staging
         db = settings.DATABASES['default']
         db_url = f'postgres://{db["USER"]}:{db["PASSWORD"]}@{db["HOST"]}:{db["PORT"]}/{db["NAME"]}'
+
+        # Pass env vars to containers
+        django_environ = {
+            k: v for k, v in os.environ.items() if k.startswith('DJANGO') or k.startswith('AWS')
+        }
+        pass_through_env_vars = [
+            client.V1EnvVar(name=key, value=value)
+            for key, value in django_environ.items()
+            if key
+            not in [
+                'DJANGO_CONFIGURATION',
+                'DJANGO_DATABASE_URL',
+                'DJANGO_CELERY_BROKER_URL',
+            ]
+        ]
+
         return [
-            # Set
+            # Update configuration
             client.V1EnvVar(
                 name='DJANGO_CONFIGURATION',
                 value='KubernetesProductionConfiguration',
@@ -114,19 +131,10 @@ class ManagedK8sTask(celery.Task):
                 name='DJANGO_DATABASE_URL',
                 value=db_url,
             ),
-            client.V1EnvVar(
-                name='DJANGO_MINIO_STORAGE_ENDPOINT',
-                value=os.getenv('DJANGO_MINIO_STORAGE_ENDPOINT', ''),  # Ignore if not present
-            ),
-            #
-            # Remain the same
             client.V1EnvVar(name='DJANGO_CELERY_BROKER_URL', value=settings.CELERY_BROKER_URL),
-            client.V1EnvVar(
-                name='DJANGO_STORAGE_BUCKET_NAME',
-                value=os.environ['DJANGO_STORAGE_BUCKET_NAME'],
-            ),
-            dev_prod_env_var('DJANGO_MINIO_STORAGE_ACCESS_KEY', 'AWS_ACCESS_KEY_ID'),
-            dev_prod_env_var('DJANGO_MINIO_STORAGE_SECRET_KEY', 'AWS_SECRET_ACCESS_KEY'),
+            #
+            # Pass through existing variables
+            *pass_through_env_vars,
             #
             # Extra envs
             client.V1EnvVar(name='JOB_NAME', value=self.job_name),
