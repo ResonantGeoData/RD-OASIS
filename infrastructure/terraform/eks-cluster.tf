@@ -27,6 +27,11 @@ module "eks" {
       groups : ["system:masters"],
     },
     {
+      userarn : "arn:aws:iam::287240249204:user/michael.vandenburgh@kitware.com",
+      username : "admin",
+      groups : ["system:masters"],
+    },
+    {
       userarn : "arn:aws:iam::287240249204:user/${module.api.heroku_iam_user_id}",
       username : "robot-admin",
       groups : ["system:masters"],
