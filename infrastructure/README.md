@@ -2,7 +2,7 @@
 
 This folder includes the infrastructure to provision both the heroku app, as well as the kubernetes cluster. Below is a diagram of how these a task is dispatched and run in the system.
 
-<!-- Insert diagram -->
+![OASIS Infrastructure](https://user-images.githubusercontent.com/11370025/152449181-59e073ba-80f5-4c63-823e-44dffbe5d3e1.svg)
 
 
 ## AWS Credentials
