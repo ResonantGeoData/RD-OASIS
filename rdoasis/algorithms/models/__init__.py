@@ -2,6 +2,7 @@ from typing import Dict, Generator, Union
 from zipfile import ZIP_DEFLATED
 
 import celery
+from django.conf import settings
 from django.db import models
 from django.db.models.functions import Length
 from django.dispatch import receiver
@@ -188,14 +189,14 @@ class Algorithm(TimeStampedModel):
     def run(self, dataset_id: Union[str, int], celery_task=None):
         if celery_task is None:
             # Prevent circular import
-            # from rdoasis.algorithms.tasks import run_algorithm_task_docker
+            from rdoasis.algorithms.tasks import run_algorithm_task_docker, run_algorithm_task_k8s
 
-            # celery_task = run_algorithm_task_docker
+            # Set task to use
+            celery_task = (
+                run_algorithm_task_docker if settings.DOCKER_TASK_RUNNER else run_algorithm_task_k8s
+            )
 
-            from rdoasis.algorithms.tasks import run_algorithm_task_k8s
-
-            celery_task = run_algorithm_task_k8s
-
+        # Create algorithm task and dispatch
         task = AlgorithmTask.objects.create(algorithm=self, input_dataset_id=dataset_id)
         celery_task.delay(algorithm_task_id=task.pk)  # type: ignore
 

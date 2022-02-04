@@ -43,6 +43,9 @@ class RdoasisMixin(ResonantGeoDataBaseMixin, ConfigMixin):
 
         configuration.AUTHENTICATION_BACKENDS.insert(0, 'rules.permissions.ObjectPermissionBackend')
 
+    # Allow for use with docker if desired (defaults to kubernetes)
+    DOCKER_TASK_RUNNER = values.BooleanValue(environ=True, default=False)
+
 
 class DevelopmentConfiguration(RdoasisMixin, DevelopmentBaseConfiguration):
     # K8S_CLUSTER_NAME = values.Value(environ_required=True)
