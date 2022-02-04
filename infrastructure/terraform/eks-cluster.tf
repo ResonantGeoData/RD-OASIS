@@ -1,3 +1,4 @@
+# AMI config
 data "aws_ami" "node_ami" {
   most_recent = true
   name_regex  = "^oasis-worker-\\d{14}$"
@@ -11,6 +12,22 @@ resource "aws_launch_template" "node_launch_template" {
   security_group_names = [aws_security_group.worker_security_group.id]
 }
 
+locals {
+  # Construct admin users
+  admin_users = [for arn in var.admin_user_arns : {
+    userarn : arn,
+    username : "admin",
+    groups : ["system:masters"]
+  }]
+
+  # The user that will access the kubernetes API to dispatch jobs
+  robot_user = {
+    userarn : "arn:aws:iam::287240249204:user/${module.api.heroku_iam_user_id}",
+    username : "robot-admin",
+    groups : ["system:masters"],
+  }
+}
+
 module "eks" {
   source          = "terraform-aws-modules/eks/aws"
   version         = "17.24.0"
@@ -20,23 +37,7 @@ module "eks" {
   vpc_id          = module.vpc.vpc_id
 
   # Add users to configmap
-  map_users = [
-    {
-      userarn : "arn:aws:iam::287240249204:user/jacob.nesbitt@kitware.com",
-      username : "admin",
-      groups : ["system:masters"],
-    },
-    {
-      userarn : "arn:aws:iam::287240249204:user/michael.vandenburgh@kitware.com",
-      username : "admin",
-      groups : ["system:masters"],
-    },
-    {
-      userarn : "arn:aws:iam::287240249204:user/${module.api.heroku_iam_user_id}",
-      username : "robot-admin",
-      groups : ["system:masters"],
-    },
-  ]
+  map_users = concat(local.admin_users, [local.robot_user])
 
   workers_group_defaults = {
     root_volume_type = "gp2"
