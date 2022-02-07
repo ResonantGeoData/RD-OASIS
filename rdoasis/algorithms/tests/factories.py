@@ -40,11 +40,11 @@ class DatasetFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Dataset
 
-    # files = factory.LazyFunction(create_dataset_files)
+    name = factory.fuzzy.FuzzyText()
 
     @factory.post_generation
     def files(self, create, extracted, **kwargs):
-        self.files.set([ChecksumFileFactory()] * 5)
+        self.files.set([ChecksumFileFactory() for _ in range(5)])
 
 
 class DockerImageFactory(factory.django.DjangoModelFactory):

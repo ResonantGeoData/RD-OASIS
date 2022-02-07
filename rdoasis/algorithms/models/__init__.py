@@ -1,8 +1,20 @@
+from typing import Dict, Generator, Union
+from zipfile import ZIP_DEFLATED
+
+import celery
 from django.db import models
+from django.db.models.functions import Length
+from django.dispatch import receiver
+from django.http.response import StreamingHttpResponse
 from django.utils.translation import gettext_lazy as _
 from django_extensions.db.models import TimeStampedModel
-from rgd.models import ChecksumFile
+from rgd.models import ChecksumFile, FileSourceType
 import zipstream
+
+from rdoasis.algorithms.utils.zip import StreamingZipFile
+
+# Register length transform
+models.CharField.register_lookup(Length)
 
 
 class DockerImage(TimeStampedModel):
@@ -25,8 +37,10 @@ class DockerImage(TimeStampedModel):
             # Ensure that only one of these fields can be set at a time
             models.CheckConstraint(
                 check=(
-                    models.Q(image_id__isnull=False, image_file__isnull=True)
-                    | models.Q(image_id__isnull=True, image_file__isnull=False)
+                    models.Q(image_id__isnull=True, image_file__isnull=False)
+                    | models.Q(
+                        image_id__isnull=False, image_id__length__gt=0, image_file__isnull=True
+                    )
                 ),
                 name='single_image_source',
             )
@@ -38,6 +52,69 @@ class Dataset(TimeStampedModel):
 
     name = models.CharField(max_length=256, unique=True)
     files = models.ManyToManyField(ChecksumFile, blank=True, related_name='datasets')
+    size = models.PositiveBigIntegerField(null=True, blank=True)
+
+    def compute_size(self):
+        """Compute the total size of all files in this dataset."""
+        self.size = sum(
+            (file.file.size for file in self.files.all() if file.type == FileSourceType.FILE_FIELD)
+        )
+        self.save()
+
+        return self.size
+
+    def file_object_generator(self, compress_type=None) -> Generator[Dict, None, None]:
+        """Yield zipstream arguments from this dataset's files."""
+        for file in self.files.all():
+            yield {
+                'arcname': file.name,
+                'iterable': file.file,
+                'compress_type': compress_type,
+            }
+
+    def streamed_zip(self) -> zipstream.ZipFile:
+        """
+        Return the files in this dataset, as a streamed zip file.
+
+        The returned stream yields chunks of the zip file when iterated over.
+        """
+        z = StreamingZipFile(compression=ZIP_DEFLATED)
+        z.write_from_generator(self.file_object_generator())
+
+        return z
+
+    def streamed_zip_response(self, filename=None) -> StreamingHttpResponse:
+        download_file_name = filename or f'{self.name}.zip'
+
+        z = self.streamed_zip()
+        res = StreamingHttpResponse(z, content_type='application/zip')
+        res['Content-Disposition'] = f'attachment; filename="{download_file_name}"'
+
+        return res
+
+
+@celery.shared_task()
+def compute_dataset_size(dataset_id: int):
+    dataset: Dataset = Dataset.objects.get(id=dataset_id)
+    return dataset.compute_size()
+
+
+@receiver(models.signals.m2m_changed, sender=Dataset.files.through)
+def update_dataset_size(sender, instance: Dataset, action: str, reverse: bool, **kwargs):
+    """Compute the dataset size if files have been added/removed."""
+    if (
+        not reverse
+        and instance.pk is not None
+        and action in ('post_add', 'post_remove', 'post_clear')
+    ):
+        compute_dataset_size.delay(instance.pk)  # type: ignore
+
+
+@receiver(models.signals.post_save, sender=Dataset)
+def init_dataset_size(sender, instance: Dataset, **kwargs):
+    """Compute the dataset size if it's not been set yet."""
+    if instance.pk is not None and instance.size is None:
+        compute_dataset_size.delay(instance.pk)  # type: ignore
 
 
 class AlgorithmTask(TimeStampedModel):
@@ -91,10 +168,10 @@ class Algorithm(TimeStampedModel):
     entrypoint = models.CharField(max_length=1000, null=True, blank=True, default=None)
 
     # Environment variables to be passed to the container
-    environment = models.JSONField(default=dict)
+    environment = models.JSONField(default=dict, blank=True)
 
     # Whether the GPU should be requested or not
-    gpu = models.BooleanField(default=False)
+    gpu = models.BooleanField(default=False, blank=True)
 
     class Meta:
         constraints = [
@@ -108,11 +185,14 @@ class Algorithm(TimeStampedModel):
     def safe_name(self):
         return '_'.join(self.name.split())
 
-    def run(self, dataset: Dataset):
-        # Prevent circular import
-        from rdoasis.algorithms.tasks import run_algorithm_task
+    def run(self, dataset_id: Union[str, int], celery_task=None):
+        if celery_task is None:
+            # Prevent circular import
+            from rdoasis.algorithms.tasks import run_algorithm_task_docker
 
-        task = AlgorithmTask.objects.create(algorithm=self, input_dataset=dataset)
-        run_algorithm_task.delay(algorithm_task_id=task.pk)
+            celery_task = run_algorithm_task_docker
+
+        task = AlgorithmTask.objects.create(algorithm=self, input_dataset_id=dataset_id)
+        celery_task.delay(algorithm_task_id=task.pk)  # type: ignore
 
         return task

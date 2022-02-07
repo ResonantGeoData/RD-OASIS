@@ -28,11 +28,24 @@ class AlgorithmQuerySerializer(serializers.Serializer):
     docker_image__pk = serializers.IntegerField(required=False)
 
 
+class AlgorithmRunSerializer(serializers.Serializer):
+    input_dataset = serializers.IntegerField()
+
+
 class DatasetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Dataset
         fields = '__all__'
-        read_only_fields = ['created', 'modified']
+        read_only_fields = ['created', 'modified', 'size']
+
+
+class DatasetListSerializer(serializers.Serializer):
+    include_output_datasets = serializers.BooleanField(required=False, default=False)
+
+
+class DatasetFilesUpdateSerializer(serializers.Serializer):
+    insert = serializers.ListField(child=serializers.IntegerField(), required=False)
+    delete = serializers.ListField(child=serializers.IntegerField(), required=False)
 
 
 class AlgorithmTaskSerializer(serializers.ModelSerializer):
