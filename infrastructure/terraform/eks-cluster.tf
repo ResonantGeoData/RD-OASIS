@@ -35,6 +35,7 @@ module "eks" {
   cluster_version = "1.20"
   subnets         = module.vpc.private_subnets
   vpc_id          = module.vpc.vpc_id
+  enable_irsa     = true
 
   # Add users to configmap
   map_users = concat(local.admin_users, [local.robot_user])
