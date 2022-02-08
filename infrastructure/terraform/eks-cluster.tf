@@ -49,6 +49,19 @@ module "eks" {
       instance_type                 = "g4dn.xlarge"
       additional_security_group_ids = [aws_security_group.worker_security_group.id]
       asg_desired_capacity          = 0
+      # Note: these tags are required for the cluster autoscaler to find this group
+      tags = [
+        {
+          key = "k8s.io/cluster-autoscaler/enabled"
+          value = "true"
+          propagate_at_launch = true
+        },
+        {
+          key = "k8s.io/cluster-autoscaler/${local.cluster_name}"
+          value = "owned"
+          propagate_at_launch = true
+        }
+      ]
     },
   ]
 
