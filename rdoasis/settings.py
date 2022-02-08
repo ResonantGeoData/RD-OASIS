@@ -45,11 +45,12 @@ class RdoasisMixin(ResonantGeoDataBaseMixin, ConfigMixin):
 
     # Allow for use with docker if desired (defaults to kubernetes)
     DOCKER_TASK_RUNNER = values.BooleanValue(environ=True, default=False)
+    K8S_CLUSTER_NAME = values.Value(environ=True)
 
 
 class DevelopmentConfiguration(RdoasisMixin, DevelopmentBaseConfiguration):
-    # K8S_CLUSTER_NAME = values.Value(environ_required=True)
-    pass
+    # Default to use docker in dev env
+    DOCKER_TASK_RUNNER = True
 
 
 class TestingConfiguration(RdoasisMixin, TestingBaseConfiguration):
@@ -57,11 +58,11 @@ class TestingConfiguration(RdoasisMixin, TestingBaseConfiguration):
 
 
 class ProductionConfiguration(RdoasisMixin, ProductionBaseConfiguration):
-    K8S_CLUSTER_NAME = values.Value(environ_required=True)
+    """The configuration used for non-heroku production deployments."""
 
 
 class KubernetesProductionConfiguration(RdoasisMixin, ProductionBaseConfiguration):
-    pass
+    """The configuration used by Kubernetes to run in-cluster management commands."""
 
 
 class HerokuProductionConfiguration(RdoasisMixin, HerokuProductionBaseConfiguration):
