@@ -27,14 +27,14 @@ resource "aws_iam_policy" "cluster_autoscaler" {
   policy = jsonencode({
     Statement = [{
       Action = [
-                "autoscaling:DescribeAutoScalingGroups",
-                "autoscaling:DescribeAutoScalingInstances",
-                "autoscaling:DescribeLaunchConfigurations",
-                "autoscaling:DescribeTags",
-                "autoscaling:SetDesiredCapacity",
-                "autoscaling:TerminateInstanceInAutoScalingGroup",
-                "ec2:DescribeLaunchTemplateVersions"
-            ]
+        "autoscaling:DescribeAutoScalingGroups",
+        "autoscaling:DescribeAutoScalingInstances",
+        "autoscaling:DescribeLaunchConfigurations",
+        "autoscaling:DescribeTags",
+        "autoscaling:SetDesiredCapacity",
+        "autoscaling:TerminateInstanceInAutoScalingGroup",
+        "ec2:DescribeLaunchTemplateVersions"
+      ]
       Effect   = "Allow"
       Resource = "*"
     }]
@@ -49,7 +49,7 @@ resource "aws_iam_role_policy_attachment" "cluster_autoscaler_attach" {
 
 resource "kubernetes_deployment" "cluster_autoscaler" {
   metadata {
-    name = "cluster-autoscaler"
+    name      = "cluster-autoscaler"
     namespace = "kube-system"
     labels = {
       app : "cluster-autoscaler"
@@ -66,7 +66,7 @@ resource "kubernetes_deployment" "cluster_autoscaler" {
     template {
       metadata {
         labels = {
-          app: "cluster-autoscaler"
+          app : "cluster-autoscaler"
         }
         annotations = {
           "prometheus.io/scrape" : true
@@ -78,15 +78,15 @@ resource "kubernetes_deployment" "cluster_autoscaler" {
         priority_class_name = "system-node-critical"
         security_context {
           run_as_non_root = true
-          run_as_user = "65534"
-          fs_group = "65534"
+          run_as_user     = "65534"
+          fs_group        = "65534"
         }
 
         service_account_name = "cluster-autoscaler"
 
         container {
           image = "k8s.gcr.io/autoscaling/cluster-autoscaler:v1.20.0"
-          name = "cluster-autoscaler"
+          name  = "cluster-autoscaler"
           resources {
             limits = {
               cpu : "100m"
@@ -109,9 +109,9 @@ resource "kubernetes_deployment" "cluster_autoscaler" {
           ]
 
           volume_mount {
-            name = "ssl-certs"
+            name       = "ssl-certs"
             mount_path = "/etc/ssl/certs/ca-certificates.crt"
-            read_only = true
+            read_only  = true
           }
 
           image_pull_policy = "Always"

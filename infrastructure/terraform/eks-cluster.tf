@@ -53,13 +53,13 @@ module "eks" {
       # Note: these tags are required for the cluster autoscaler to find this group
       tags = [
         {
-          key = "k8s.io/cluster-autoscaler/enabled"
-          value = "true"
+          key                 = "k8s.io/cluster-autoscaler/enabled"
+          value               = "true"
           propagate_at_launch = true
         },
         {
-          key = "k8s.io/cluster-autoscaler/${local.cluster_name}"
-          value = "owned"
+          key                 = "k8s.io/cluster-autoscaler/${local.cluster_name}"
+          value               = "owned"
           propagate_at_launch = true
         }
       ]
