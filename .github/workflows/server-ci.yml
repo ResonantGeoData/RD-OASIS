@@ -1,4 +1,4 @@
-name: docker-ci
+name: Django Server CI
 on:
   push:
   schedule:
@@ -38,7 +38,7 @@ jobs:
           pip install tox
       - name: Run tests
         run: |
-          tox -e test-docker
+          tox
         env:
           DJANGO_DATABASE_URL: postgres://postgres:postgres@localhost:5432/django
           DJANGO_MINIO_STORAGE_ENDPOINT: localhost:9000
