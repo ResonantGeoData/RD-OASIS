@@ -4,6 +4,7 @@ import logging
 import os
 
 from django.conf import settings
+from django.db import transaction
 import djclick as click
 from rgd.models import Collection
 from rgd.models.utils import get_or_create_checksumfile
@@ -49,6 +50,7 @@ def ingest_s3(root_path: str) -> None:
         )
         return f
 
+    @transaction.atomic
     def make_raster(handle):
         f = make_file(handle)
         meta = _make_raster_from_files(
