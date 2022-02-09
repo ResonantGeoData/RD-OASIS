@@ -34,6 +34,7 @@ def ingest_s3(
     root_path: str
 ) -> None:
 
+    root_path = '/tmp/lbnl_data'  # TODO: remove hard value
     logger.info(os.listdir(root_path))
 
     settings.CELERY_TASK_ALWAYS_EAGER = True
@@ -60,6 +61,7 @@ def ingest_s3(
         return meta
 
     filelist = glob(f'{root_path}/**/*.tif', recursive=True)
-    for path in filelist:
+    for i, path in enumerate(filelist):
+        logger.info(f'{i}/{len(filelist)}: {path}')
         with open(path, 'rb') as handle:
             make_raster(handle)
