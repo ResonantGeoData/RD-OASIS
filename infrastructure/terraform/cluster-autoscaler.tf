@@ -68,10 +68,6 @@ resource "kubernetes_deployment" "cluster_autoscaler" {
         labels = {
           app : "cluster-autoscaler"
         }
-        annotations = {
-          "prometheus.io/scrape" : true
-          "prometheus.io/port" : 8085
-        }
       }
 
       spec {
