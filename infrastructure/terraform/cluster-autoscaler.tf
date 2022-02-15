@@ -78,8 +78,11 @@ resource "kubernetes_deployment" "cluster_autoscaler" {
         # Set cluster autoscaler to highest priority.
         # https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/#marking-pod-as-critical
         priority_class_name = "system-node-critical"
+
         security_context {
+          # Ensure the pod process runs as nonroot user.
           run_as_non_root = true
+          # Explicitly set a user and group for the pod process.
           run_as_user     = "65534"
           fs_group        = "65534"
         }
