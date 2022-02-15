@@ -83,8 +83,8 @@ resource "kubernetes_deployment" "cluster_autoscaler" {
           # Ensure the pod process runs as nonroot user.
           run_as_non_root = true
           # Explicitly set a user and group for the pod process.
-          run_as_user     = "65534"
-          fs_group        = "65534"
+          run_as_user = "65534"
+          fs_group    = "65534"
         }
 
         service_account_name = "cluster-autoscaler"
