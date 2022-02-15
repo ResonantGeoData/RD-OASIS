@@ -75,6 +75,8 @@ resource "kubernetes_deployment" "cluster_autoscaler" {
       }
 
       spec {
+        # Set cluster autoscaler to highest priority.
+        # https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/#marking-pod-as-critical
         priority_class_name = "system-node-critical"
         security_context {
           run_as_non_root = true
