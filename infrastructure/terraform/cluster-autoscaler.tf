@@ -4,9 +4,11 @@ data "aws_iam_policy_document" "cluster_autoscaler_assume_role_policy" {
     effect  = "Allow"
 
     condition {
-      test     = "StringEquals"
+      test = "StringEquals"
+      # strip https://
       variable = "${replace(data.aws_eks_cluster.cluster.identity[0].oidc[0].issuer, "https://", "")}:sub"
-      values   = ["system:serviceaccount:kube-system:cluster-autoscaler"]
+      # assign to cluster-autoscaler service account
+      values = ["system:serviceaccount:kube-system:cluster-autoscaler"]
     }
 
     principals {
