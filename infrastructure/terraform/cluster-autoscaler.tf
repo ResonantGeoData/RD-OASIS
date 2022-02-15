@@ -11,6 +11,8 @@ data "aws_iam_policy_document" "cluster_autoscaler_assume_role_policy" {
       values = ["system:serviceaccount:kube-system:cluster-autoscaler"]
     }
 
+    # Needed for OIDC provider.
+    # See https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_principal.html
     principals {
       identifiers = [module.eks.oidc_provider_arn]
       type        = "Federated"
