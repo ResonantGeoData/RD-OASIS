@@ -49,7 +49,13 @@ module "eks" {
       name                          = "worker-group-GPU"
       instance_type                 = "g4dn.xlarge"
       additional_security_group_ids = [aws_security_group.worker_security_group.id]
-      asg_desired_capacity          = 0
+
+      # Autoscaling group capacity limits
+      # See https://docs.aws.amazon.com/autoscaling/ec2/userguide/asg-capacity-limits.html
+      asg_desired_capacity = 0 # no workers should be spun up if there's zero load
+      asg_min_size         = 0
+      asg_max_size         = 10
+
       # Note: these tags are required for the cluster autoscaler to find this group
       tags = [
         {
