@@ -55,6 +55,7 @@ class DevelopmentConfiguration(RdoasisMixin, DevelopmentBaseConfiguration):
 
 class TestingConfiguration(RdoasisMixin, TestingBaseConfiguration):
     CELERY_TASK_ALWAYS_EAGER = True
+    DOCKER_TASK_RUNNER = True
 
 
 class ProductionConfiguration(RdoasisMixin, ProductionBaseConfiguration):
