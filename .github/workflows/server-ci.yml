@@ -1,6 +1,9 @@
 name: Django Server CI
 on:
   push:
+    paths-ignore:
+      - 'client/**'
+      - 'infrastructure/**'
   schedule:
     - cron: "0 0 * * *"
 jobs:
