@@ -37,13 +37,17 @@ services:
     volumes:
       - .:/opt/django-project
       - /tmp/rdoasis_worker:/tmp/rdoasis_worker
+      # - /Users/bane/Software/OASIS/data/Data_scripts_Sept2021:/tmp/lbnl_data/
     depends_on:
       - postgres
       - rabbitmq
       - minio
 
   flower:
-    image: mher/flower
-    command: ["--broker=amqp://rabbitmq:5672/", "--url_prefix=flower"]
+    image: mher/flower:0.9.5
+    command: ["--broker=amqp://rabbitmq:5672/"]
     ports:
       - 5555:5555
+    depends_on:
+      - rabbitmq
+      - celery
