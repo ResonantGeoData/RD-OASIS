@@ -55,7 +55,7 @@ setup(
         'rules',
         'zipstream==1.1.4',
         # Production-only
-        'django-composed-configuration[prod]',
+        'django-composed-configuration[prod]>=0.19.2',
         'django-s3-file-field[boto3]',
         'gunicorn',
         'boto3',
@@ -66,7 +66,7 @@ setup(
     dependency_links=['https://girder.github.io/large_image_wheels'],
     extras_require={
         'dev': [
-            'django-composed-configuration[dev]',
+            'django-composed-configuration[dev]>=0.19.2',
             'django-debug-toolbar',
             'django-s3-file-field[minio]',
             'ipython',
