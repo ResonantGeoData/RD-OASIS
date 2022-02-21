@@ -25,7 +25,7 @@ def _get_datetime_from_filename(filename):
     date_str = filename.split('_')[-1][:-4]
     try:
         return datetime.strptime(date_str, '%Y%m%d')
-    except:
+    except Exception:
         return None
 
 
