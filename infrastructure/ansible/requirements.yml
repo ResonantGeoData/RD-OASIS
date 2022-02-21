@@ -1,0 +1,4 @@
+- src: geerlingguy.docker
+- src: geerlingguy.pip
+- src: nvidia.nvidia_driver
+- src: nvidia.nvidia_docker

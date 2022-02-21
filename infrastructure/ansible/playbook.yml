@@ -1,0 +1,34 @@
+---
+- name: Install docker and nvidia-docker
+  hosts: all
+  become: yes
+
+  roles:
+    - role: geerlingguy.docker
+    - role: nvidia.nvidia_driver
+    - role: nvidia.nvidia_docker
+    - role: geerlingguy.pip
+
+  tasks:
+    # TODO
+    # Ensure python3.8 + pip are installed
+    # Test above role
+
+    # Install project w/ celery requirements
+    - name: Copy project
+      synchronize:
+        src: "{{ playbook_dir }}/../../"
+        dest: /opt/django-project
+        rsync_opts:
+          - --include=manage.py
+          - --include=setup.py
+          - --include=rdoasis
+
+    - name: Install Project requirements
+      apt:
+        name: libpq-dev
+
+    - name: Install Project
+      pip:
+        executable: pip3
+        extra_args: --find-links https://girder.github.io/large_image_wheels /opt/django-project[worker]

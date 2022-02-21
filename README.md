@@ -1,95 +1,56 @@
 # RD-OASIS
 
-## Develop with Docker (recommended quickstart)
-This is the simplest configuration for developers to start with.
+## What is OASIS?
 
-### Initial Setup
-1. Run `docker-compose run --rm django ./manage.py migrate`
-2. Run `docker-compose run --rm django ./manage.py createsuperuser`
-   and follow the prompts to create your own user
+OASIS is a Django application designed to allow users to define and run arbitrary algorithms, tracking the progress and results of such algorithms in Django.
 
-### Run Application
-1. Run `docker-compose up`
-2. Access the site, starting at http://localhost:8000/admin/
-3. When finished, use `Ctrl+C`
 
-### Application Maintenance
-Occasionally, new package dependencies or schema changes will necessitate
-maintenance. To non-destructively update your development stack at any time:
-1. Run `docker-compose pull`
-2. Run `docker-compose build --pull --no-cache`
-3. Run `docker-compose run --rm django ./manage.py migrate`
+## The Algorithm Execution Lifecycle
+These are the steps that are taken by tasks to execute an algorithm. This is generalized between Kubernetes and Celery, as the steps are the same at a high level.
 
-## Develop Natively (advanced)
-This configuration still uses Docker to run attached services in the background,
-but allows developers to run Python code on their native system.
+![lifecycle](https://user-images.githubusercontent.com/11370025/153090818-f1721c29-db2f-412d-b035-4b3581ea6cbb.png)
 
-### Initial Setup
-1. Run `docker-compose -f ./docker-compose.yml up -d`
-2. Install Python 3.8
-3. Install
-   [`psycopg2` build prerequisites](https://www.psycopg.org/docs/install.html#build-prerequisites)
-4. Create and activate a new Python virtualenv
-5. Run `pip install -e .[dev]`
-6. Run `source ./dev/export-env.sh`
-7. Run `./manage.py migrate`
-8. Run `./manage.py createsuperuser` and follow the prompts to create your own user
 
-### Run Application
-1.  Ensure `docker-compose -f ./docker-compose.yml up -d` is still active
-2. Run:
-   1. `source ./dev/export-env.sh`
-   2. `./manage.py runserver`
-3. Run in a separate terminal:
-   1. `source ./dev/export-env.sh`
-   2. `celery --app rdoasis.celery worker --loglevel INFO --without-heartbeat`
-4. When finished, run `docker-compose stop`
+## Main Components
 
-## Remap Service Ports (optional)
-Attached services may be exposed to the host system via alternative ports. Developers who work
-on multiple software projects concurrently may find this helpful to avoid port conflicts.
+These are the main components that make up OASIS. Each of these components is a Django model, and each entry here will contain a short description, followed by the fields associated with each.
 
-To do so, before running any `docker-compose` commands, set any of the environment variables:
-* `DOCKER_POSTGRES_PORT`
-* `DOCKER_RABBITMQ_PORT`
-* `DOCKER_MINIO_PORT`
+### Algorithm
+Algorithms are at the core of OASIS, and contains much of the required definitions for any process you want to run.
 
-The Django server must be informed about the changes:
-* When running the "Develop with Docker" configuration, override the environment variables:
-  * `DJANGO_MINIO_STORAGE_MEDIA_URL`, using the port from `DOCKER_MINIO_PORT`.
-* When running the "Develop Natively" configuration, override the environment variables:
-  * `DJANGO_DATABASE_URL`, using the port from `DOCKER_POSTGRES_PORT`
-  * `DJANGO_CELERY_BROKER_URL`, using the port from `DOCKER_RABBITMQ_PORT`
-  * `DJANGO_MINIO_STORAGE_ENDPOINT`, using the port from `DOCKER_MINIO_PORT`
+* **Name** - The name of the Algorithm
+* **Docker Image** - The docker image (documented below) that this algorithm will use.
+* **Command** - The command used to invoke your algorithm
+* **Entrypoint** - If necessary, override the default entrypoint of your docker image.
+* **Environment** - Any environment variables that should be passed into the container when running your algorithm.
+* **GPU** - Whether GPU access is required by this algorithm.
 
-Since most of Django's environment variables contain additional content, use the values from
-the appropriate `dev/.env.docker-compose*` file as a baseline for overrides.
 
-## Testing
-### Initial Setup
-tox is used to execute all tests.
-tox is installed automatically with the `dev` package extra.
+### Algorithm Task
+Algorithm tasks are individual runs of an algorithm. Algorithm tasks are isolated from each other, only sharing the underlying algorithm itself.
 
-When running the "Develop with Docker" configuration, all tox commands must be run as
-`docker-compose run --rm django tox`; extra arguments may also be appended to this form.
+  * **Algorithm** - The algorithm which this task belongs to.
+  * **Status** - The current status of this task (its progress in the task lifecycle). One of:
+    * Created
+    * Queued
+    * Running
+    * Failed
+    * Succeeded
+  * **Output Log** - The output (stdout) of the algorithm, stored as a text field.
+  * **Input Dataset** - The dataset containing the input, to be mounted to and copied into the `/<working_dir>/input` directory.
+  * **Output Dataset** - The dataset containing any files produced by the algorithm (any files placed into the `/<working_dir>/output` directory).
 
-### Running Tests
-Run `tox` to launch the full test suite.
 
-Individual test environments may be selectively run.
-This also allows additional options to be be added.
-Useful sub-commands include:
-* `tox -e lint`: Run only the style checks
-* `tox -e type`: Run only the type checks
-* `tox -e test`: Run only the pytest-driven tests
+### Docker Image
+This is the defintion of the image to be used when running your algorithm. This docker/container image contains the necessary environment to run your algorithm. Generally, any necessary files, libraries, packages, etc. that are required by your algorithm to run, are included in this image.
 
-To automatically reformat all code to comply with
-some (but not all) of the style checks, run `tox -e format`.
+* **Name** - The name of the image
+* **Image ID** - The id of this image on [Docker Hub](https://hub.docker.com/).
+* **Image File** - If this image is uploaded directly to the API, instead of on docker hub, then this field points to the file which contains it.
 
-### Algorithms app task tests
-If you are writing or trying to run tests which fully utilize tasks (and docker) from the `algorithms` app, you'll need to do the following:
+### Dataset
+A Dataset is a container of files to be used by algorithms. This is used to facilitate both input to and output from an algorithm task.
 
-1. Make sure `docker` is installed on your system.
-2. When writing the test, add the `@pytest.mark.docker` decorator to it.
-3. Perform the native setup outlined above, as since these tests use `docker`, they can't be run with the `docker-compose` setup.
-4. To run these tests, use the command `tox -e test-docker`.
+  * **Name** - The name of the dataset.
+  * **Files** - The files contained within this dataset.
+  * **Size** - The size (in bytes) of this dataset.

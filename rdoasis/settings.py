@@ -43,20 +43,32 @@ class RdoasisMixin(ResonantGeoDataBaseMixin, ConfigMixin):
 
         configuration.AUTHENTICATION_BACKENDS.insert(0, 'rules.permissions.ObjectPermissionBackend')
 
+    # Allow for use with docker if desired (defaults to kubernetes)
+    DOCKER_TASK_RUNNER = values.BooleanValue(environ=True, default=False)
+    K8S_CLUSTER_NAME = values.Value(environ=True)
+
 
 class DevelopmentConfiguration(RdoasisMixin, DevelopmentBaseConfiguration):
-    pass
+    # Default to use docker in dev env
+    DOCKER_TASK_RUNNER = True
 
 
 class TestingConfiguration(RdoasisMixin, TestingBaseConfiguration):
     CELERY_TASK_ALWAYS_EAGER = True
+    DOCKER_TASK_RUNNER = True
 
 
 class ProductionConfiguration(RdoasisMixin, ProductionBaseConfiguration):
-    pass
+    """The configuration used for non-heroku production deployments."""
+
+
+class KubernetesProductionConfiguration(RdoasisMixin, ProductionBaseConfiguration):
+    """The configuration used by Kubernetes to run in-cluster management commands."""
 
 
 class HerokuProductionConfiguration(RdoasisMixin, HerokuProductionBaseConfiguration):
+    K8S_CLUSTER_NAME = values.Value(environ_required=True)
+
     # Use different env var names (with no DJANGO_ prefix) for services that Heroku auto-injects
     DATABASES = values.DatabaseURLValue(
         environ_name='DATABASE_URL',
