@@ -29,4 +29,6 @@
         name: libpq-dev
 
     - name: Install Project
-      ansible.builtin.command: pip3 install --find-links https://girder.github.io/large_image_wheels /opt/django-project[worker]
+      pip:
+        executable: pip3
+        extra_args: --find-links https://girder.github.io/large_image_wheels /opt/django-project[worker]

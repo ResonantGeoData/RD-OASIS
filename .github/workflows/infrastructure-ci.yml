@@ -1,0 +1,78 @@
+name: Infrastructure CI
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'infrastructure/**'
+  pull_request:
+    paths:
+      - 'infrastructure/**'
+
+jobs:
+  test-terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure/terraform
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v1.2.1
+
+      - name: Lint Terraform code
+        run: terraform fmt -check -diff -recursive
+
+      - name: Initialize Terraform (offline only)
+        run: terraform init -backend=false
+
+      - name: Validate Terraform code
+        run: terraform validate
+
+  test-packer-ansible:
+    runs-on: ubuntu-latest
+    env:
+      PACKER_LOG: 1
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.8"
+
+      # TODO: Unfortunately, the official hashicorp/packer-github-actions action doesn't work with
+      # our setup, as it doesn't have ansible installed in its base docker image.
+      # https://github.com/hashicorp/packer-github-actions/issues/20#issuecomment-832935862
+      # So, just manually install Ansible + Packer and directly use the Packer CLI.
+
+      - name: Install ansible and ansible-lint
+        run: pip install ansible ansible-lint
+
+      - name: Install ansible roles
+        run: ansible-galaxy install -r requirements.yml
+        working-directory: infrastructure/ansible
+
+      - name: Lint Ansible Playbooks
+        run: ansible-lint --exclude ${HOME}/.ansible/roles/
+        working-directory: infrastructure/ansible
+
+      - name: Install Packer
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install packer
+
+      - name: Lint Packer code
+        run: packer fmt -check -diff -recursive .
+        working-directory: infrastructure/packer
+
+      - name: Initialize Packer
+        run: packer init .
+        working-directory: infrastructure/packer
+
+      - name: Validate Packer template
+        run: packer validate .
+        working-directory: infrastructure/packer
