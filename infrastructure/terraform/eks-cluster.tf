@@ -35,6 +35,7 @@ module "eks" {
   cluster_version = "1.20"
   subnets         = module.vpc.private_subnets
   vpc_id          = module.vpc.vpc_id
+  enable_irsa     = true
 
   # Add users to configmap
   map_users = concat(local.admin_users, [local.robot_user])
@@ -48,7 +49,26 @@ module "eks" {
       name                          = "worker-group-GPU"
       instance_type                 = "g4dn.xlarge"
       additional_security_group_ids = [aws_security_group.worker_security_group.id]
-      asg_desired_capacity          = 0
+
+      # Autoscaling group capacity limits
+      # See https://docs.aws.amazon.com/autoscaling/ec2/userguide/asg-capacity-limits.html
+      asg_desired_capacity = 0 # no workers should be spun up if there's zero load
+      asg_min_size         = 0
+      asg_max_size         = 10
+
+      # Note: these tags are required for the cluster autoscaler to find this group
+      tags = [
+        {
+          key                 = "k8s.io/cluster-autoscaler/enabled"
+          value               = "true"
+          propagate_at_launch = true
+        },
+        {
+          key                 = "k8s.io/cluster-autoscaler/${local.cluster_name}"
+          value               = "owned"
+          propagate_at_launch = true
+        }
+      ]
     },
   ]
 
