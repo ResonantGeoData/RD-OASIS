@@ -35,6 +35,7 @@ class RdoasisMixin(ResonantGeoDataBaseMixin, ConfigMixin):
             'django_cleanup.apps.CleanupConfig',
             'rgd',
             'rgd_imagery',
+            'django_large_image',
         ]
 
         configuration.REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'].append(
