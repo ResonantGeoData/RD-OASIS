@@ -37,7 +37,7 @@ setup(
     include_package_data=True,
     install_requires=[
         'celery',
-        'django~=3.2',
+        'django>=4',
         'django-admin-display',
         'django-allauth',
         'django-configurations[database,email]',
@@ -55,18 +55,18 @@ setup(
         'rules',
         'zipstream==1.1.4',
         # Production-only
-        'django-composed-configuration[prod]>=0.19.2',
+        'django-composed-configuration[prod]>=0.21.0',
         'django-s3-file-field[boto3]',
         'gunicorn',
         'boto3',
         # RGD
-        'django-rgd[configuration]==0.2.17',
-        'django-rgd-imagery==0.2.17',
+        'django-rgd[configuration]==0.3.3',
+        'django-rgd-imagery==0.3.3',
     ],
     dependency_links=['https://girder.github.io/large_image_wheels'],
     extras_require={
         'dev': [
-            'django-composed-configuration[dev]>=0.19.2',
+            'django-composed-configuration[dev]>=0.21.0',
             'django-debug-toolbar',
             'django-s3-file-field[minio]',
             'ipython',
@@ -74,11 +74,11 @@ setup(
             'boto3-stubs[eks]',
         ],
         'worker': [
-            'django-rgd-imagery[worker]==0.2.17',
+            'django-rgd-imagery[worker]==0.3.3',
             'docker',
         ],
         'fuse': [
-            'django-rgd[configuration,fuse]==0.2.17',
+            'django-rgd[configuration,fuse]==0.3.3',
         ],
         'k8s': [
             'kubernetes',
