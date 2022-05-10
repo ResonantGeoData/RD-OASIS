@@ -32,11 +32,17 @@ def _run_algorithm_task_docker(self: ManagedTask, *args, **kwargs):
         logger.info(f'Pulling {image_id}. This may take a while...')
         image = client.images.pull(image_id)
 
+    command: str = self.algorithm.command
+    if self.algorithm_task.command_format_args:
+        command = command.format(**self.algorithm_task.command_format_args)
+
+    print(f'command = {command}')
+
     # Run container
     try:
         container: Container = client.containers.run(
             image,
-            command=self.algorithm.command,
+            command=command,
             entrypoint=self.algorithm.entrypoint,
             environment=self.algorithm.environment,
             mounts=mounts,

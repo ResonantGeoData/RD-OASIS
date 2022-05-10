@@ -137,6 +137,7 @@ class AlgorithmTask(TimeStampedModel):
     output_dataset = models.ForeignKey(
         Dataset, blank=True, null=True, on_delete=models.RESTRICT, related_name='output_tasks'
     )
+    command_format_args = models.JSONField(max_length=1000, blank=True, null=True)
 
     def output_dataset_zip(self) -> zipstream.ZipFile:
         """
@@ -186,7 +187,7 @@ class Algorithm(TimeStampedModel):
     def safe_name(self):
         return '_'.join(self.name.split())
 
-    def run(self, dataset_id: Union[str, int], celery_task=None):
+    def run(self, dataset_id: Union[str, int], celery_task=None, command_format_args=None):
         if celery_task is None:
             # Prevent circular import
             from rdoasis.algorithms.tasks import run_algorithm_task_docker, run_algorithm_task_k8s
@@ -197,7 +198,9 @@ class Algorithm(TimeStampedModel):
             )
 
         # Create algorithm task and dispatch
-        task = AlgorithmTask.objects.create(algorithm=self, input_dataset_id=dataset_id)
+        task = AlgorithmTask.objects.create(
+            algorithm=self, input_dataset_id=dataset_id, command_format_args=command_format_args
+        )
         celery_task.delay(algorithm_task_id=task.pk)  # type: ignore
 
         return task
