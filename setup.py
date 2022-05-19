@@ -60,8 +60,8 @@ setup(
         'gunicorn',
         'boto3',
         # RGD
-        'django-rgd[configuration]==0.3.3',
-        'django-rgd-imagery==0.3.3',
+        'django-rgd[configuration]>=0.3.3',
+        'django-rgd-imagery>=0.3.3',
     ],
     dependency_links=['https://girder.github.io/large_image_wheels'],
     extras_require={
@@ -74,11 +74,11 @@ setup(
             'boto3-stubs[eks]',
         ],
         'worker': [
-            'django-rgd-imagery[worker]==0.3.3',
+            'django-rgd-imagery[worker]>=0.3.3',
             'docker',
         ],
         'fuse': [
-            'django-rgd[configuration,fuse]==0.3.3',
+            'django-rgd[configuration,fuse]>=0.3.3',
         ],
         'k8s': [
             'kubernetes',
